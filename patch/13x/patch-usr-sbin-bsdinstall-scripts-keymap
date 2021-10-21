@@ -1,0 +1,11 @@
+--- keymap.orig	2021-10-18 04:39:18.330364000 +0300
++++ keymap	2021-10-18 15:22:57.809316000 +0300
+@@ -52,7 +52,7 @@
+ msg_continue_with_keymap="Continue with %s keymap"
+ msg_default="default"
+ msg_error="Error"
+-msg_freebsd_installer="FreeBSD Installer"
++msg_freebsd_installer="MyBee Installer"
+ msg_keymap_menu_text="The system console driver for FreeBSD defaults to standard \"US\"\nkeyboard map. Other keymaps can be chosen below."
+ msg_keymap_selection="Keymap Selection"
+ msg_ok="OK"

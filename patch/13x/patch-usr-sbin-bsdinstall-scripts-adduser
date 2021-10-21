@@ -1,0 +1,11 @@
+--- adduser.orig	2021-10-18 04:39:18.329938000 +0300
++++ adduser	2021-10-18 15:18:45.311434000 +0300
+@@ -27,7 +27,7 @@
+ # $FreeBSD$
+ 
+ clear
+-echo "FreeBSD Installer"
++echo "MyBee Installer"
+ echo "========================"
+ echo "Add Users"
+ echo

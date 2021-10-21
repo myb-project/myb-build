@@ -1,0 +1,138 @@
+#!/bin/sh
+#
+# /etc/rc.initial
+#
+
+. /etc/rc.conf
+. /etc/rc.subr
+export workdir="${cbsd_workdir}"
+. /usr/local/cbsd/cbsd.conf
+. /usr/local/cbsd/subr/ansiicolor.subr
+. /usr/jails/nc.inventory
+# Make sure the user can't kill us by pressing Ctrl-C
+trap : 2
+trap : 3
+trap : 4
+# Make sure the user can't access rootshell by pressing Ctrl-Z
+trap : 18
+
+# Set our operating platform
+PLATFORM="MyBee"
+version="21.10"
+producturl="https://myb.convectix.com"
+
+while : ; do
+
+	uplink_iface4=$( /sbin/route -n -4 get 0.0.0.0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
+	uplink_iface6=$( /sbin/route -n -6 get ::0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
+
+	if [ -n "${uplink_iface6}" ]; then
+		ip6=$( /sbin/ifconfig ${uplink_iface6} | /usr/bin/awk '/inet6 *:*+/{print $2}' | /usr/bin/grep -v %${uplink_iface6}$ | /usr/bin/head -n1 )
+	else
+		# route can not work in jail, looks at all
+		ip6=$( /sbin/ifconfig | /usr/bin/awk '/inet6 *:*+/{print $2}' | /usr/bin/grep -v %${uplink_iface6}$ | /usr/bin/head -n1 )
+	fi
+
+	if [ -n "${uplink_iface4}" ]; then
+		ip4=$( /sbin/ifconfig ${uplink_iface4} | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
+	else
+		# route can not work in jail, looks at all
+		ip4=$( /sbin/ifconfig | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
+	fi
+
+	echo
+	echo "Welcome to ${PLATFORM} ${version}!"
+	echo
+	echo -e "    Copyright (c) 2013-2021 CBSD Team"
+	echo -e "    Copyright (c) 2021 ConvectIX Team"
+	echo -e "    ${LCYAN}Visit: $producturl for system updates! ${N0_COLOR}"
+	echo
+	echo -e "        API address: ${W1_COLOR}http://${ip4}${N0_COLOR}"
+	[ -n "${ip6}" ] && echo -e "        API v6 address: ${W1_COLOR}http://${ip6}${N0_COLOR}"
+	echo -e "        LAN Network IPv4 Address: ${H3_COLOR}10.0.0.1${N0_COLOR}"
+	# display menu
+	echo
+	echo "Console Menu"
+	echo "------------"
+	echo -e "1) (Re)Configure Network         ${DGRAY}10) Configure Hosts Allow for API${NORMAL}"
+	echo -e "2) Reset 'root' user password    ${DGRAY}11) Configure Pubkey WhiteList${NORMAL}"
+	echo -e "${DGRAY}3) Configure VPN access for API${NORMAL}  ${DGRAY}12) Add cluster node${NORMAL}"
+	echo -e "${DGRAY}4) Change VM network profile${NORMAL}     13) Console Keyboard Map"
+	echo -e "${DGRAY}5) Install container template${NORMAL}    ${DGRAY}14) NFS/PVC/P9FS shares for VM${NORMAL}"
+	echo -e "6) Shell ( warm cloud image )    ${DGRAY}15) Set API FQDN ( + certbot )${NORMAL}"
+	echo -e "7) Reboot Server                 ${DGRAY}16) Kubernetes cluster${NORMAL}"
+	echo -e "8) Shutdown Server"
+
+	echo
+	read -p "Enter a number:
+" opmode
+
+	# see what the user has chosen
+	case ${opmode} in
+		1)
+			bsdinstall netconfig
+			if [ -r /tmp/bsdinstall_etc/resolv.conf ]; then
+				cp -a /tmp/bsdinstall_etc/resolv.conf
+			fi
+			if [ -r /tmp/bsdinstall_etc/rc.conf.net ]; then
+				cut -d "=" -f 1 /tmp/bsdinstall_etc/rc.conf.net | while read _param; do
+					cp /etc/rc.conf /etc/rc.conf.bak
+					# sed 'd
+					grep -v ${_param} /etc/rc.conf.bak > /etc/rc.conf
+				done
+				echo >> /etc/rc.conf
+				cat /tmp/bsdinstall_etc/rc.conf.net >> /etc/rc.conf
+				echo "reboot the host to apply the changes"
+				read p
+			fi
+		 	;;
+		2)
+			echo "not implemented yet"
+			read p
+		 	;;
+			3)
+				passwd root
+				;;
+			4)
+				echo "not implemented yet"
+				read p
+				;;
+			5)
+				/etc/rc.initial.ping
+				echo "not implemented yet"
+				read p
+				;;
+			6)
+				/root/bin/checkiso.sh
+				exit
+				;;
+			7)
+				/etc/rc.initial.reboot
+				;;
+			8)
+				/etc/rc.initial.halt
+				;;
+			9)
+				echo "not implemented yet"
+				read p
+				;;
+			10)
+				echo "not implemented yet"
+				read p
+				;;
+			11)
+				echo "not implemented yet"
+				read p
+				;;
+			12)
+				echo "not implemented yet"
+				read p
+				;;
+			13)
+				/usr/sbin/kbdmap
+				;;
+			 *)
+				;;
+		esac
+	done
+fi

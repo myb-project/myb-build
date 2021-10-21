@@ -1,0 +1,11 @@
+--- mount.orig	2021-10-18 04:39:18.330532000 +0300
++++ mount	2021-10-18 15:24:00.404910000 +0300
+@@ -44,7 +44,7 @@
+ 	mkdir -p $i 2>/dev/null
+ 	MNTERROR=`mount -F $TMP_FSTAB $i 2>&1`
+ 	if [ $? -ne 0 ]; then
+-		dialog --backtitle "FreeBSD Installer" --title "Error" \
++		dialog --backtitle "MyBee Installer" --title "Error" \
+ 		    --msgbox "Error mounting partition $i:\n$MNTERROR" 0 0
+ 		exit 1
+ 	fi

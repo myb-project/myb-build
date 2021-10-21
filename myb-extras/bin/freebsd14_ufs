@@ -1,0 +1,4 @@
+#!/bin/sh
+
+profile="vm-freebsd-cloud-FreeBSD-ufs-x64-14.conf"
+cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1

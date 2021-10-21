@@ -1,0 +1,25 @@
+--- checksum.orig	2021-10-18 04:39:18.330096000 +0300
++++ checksum	2021-10-18 15:20:03.567410000 +0300
+@@ -37,7 +37,7 @@
+ 	for i in $DISTRIBUTIONS; do
+ 		items="$items $i `eval echo \\\${status_$(basename $i .txz):-Pending}`"
+ 	done
+-	dialog --backtitle "FreeBSD Installer" --title "Checksum Verification" \
++	dialog --backtitle "MyBee Installer" --title "Checksum Verification" \
+ 	    --mixedgauge "Verifying checksums of selected distributions." \
+ 	    0 0 $percentage $items
+ 
+@@ -64,11 +64,11 @@
+ 		eval "status_$distname=1"
+ 		case $(/bin/freebsd-version -u) in
+ 		*-ALPHA*|*-CURRENT|*-STABLE|*-PRERELEASE)
+-			dialog --backtitle "FreeBSD Installer" --title "Error" \
++			dialog --backtitle "MyBee Installer" --title "Error" \
+ 			    --msgbox "The checksum for $dist does not match. It may have become corrupted, or it may be from a newer version of FreeBSD. Please check for a newer snapshot." 0 0
+ 			;;
+ 		*)
+-			dialog --backtitle "FreeBSD Installer" --title "Error" \
++			dialog --backtitle "MyBee Installer" --title "Error" \
+ 			    --msgbox "The checksum for $dist does not match. It may have become corrupted, and should be redownloaded." 0 0
+ 			;;
+ 		esac

@@ -1,0 +1,20 @@
+--- mirrorselect.orig	2021-10-18 04:39:18.330429000 +0300
++++ mirrorselect	2021-10-18 15:23:28.688606000 +0300
+@@ -34,7 +34,7 @@
+ : ${DIALOG_ESC=255}
+ 
+ exec 3>&1
+-MIRROR=`dialog --backtitle "FreeBSD Installer" \
++MIRROR=`dialog --backtitle "MyBee Installer" \
+     --title "Mirror Selection" --extra-button --extra-label "Other" \
+     --menu "Please select the site closest to you or \"other\" if you'd like to specify a different choice.  Also note that not every site listed here carries more than the base distribution kits. Only Primary sites are guaranteed to carry the full range of possible distributions. Select a site that's close!" \
+     0 0 0 \
+@@ -164,7 +164,7 @@
+ 	;;
+ $DIALOG_EXTRA)
+ 	exec 3>&1
+-	BSDINSTALL_DISTSITE=`dialog --backtitle "FreeBSD Installer" \
++	BSDINSTALL_DISTSITE=`dialog --backtitle "MyBee Installer" \
+ 	    --title "Mirror Selection" \
+ 	    --inputbox "Please enter the URL to an alternate FreeBSD mirror:" \
+ 	    0 0 "$BSDINSTALL_DISTSITE" 2>&1 1>&3`

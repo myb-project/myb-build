@@ -1,0 +1,12 @@
+#!/bin/sh
+/usr/bin/dialog --defaultno --yesno "Do you really want to reboot the server?" 5 46
+
+case $? in
+	0)
+		/sbin/shutdown -r now >/dev/null;
+		;;
+	1)
+		;;
+	255)
+		;;
+esac

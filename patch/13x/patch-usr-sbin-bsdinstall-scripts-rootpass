@@ -1,0 +1,11 @@
+--- rootpass.orig	2021-10-18 04:39:18.330691000 +0300
++++ rootpass	2021-10-18 15:25:59.763337000 +0300
+@@ -27,7 +27,7 @@
+ # $FreeBSD$
+ 
+ clear
+-echo "FreeBSD Installer"
++echo "MyBee Installer"
+ echo "========================"
+ echo
+ 

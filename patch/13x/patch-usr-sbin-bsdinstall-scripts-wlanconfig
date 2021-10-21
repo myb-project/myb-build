@@ -1,0 +1,11 @@
+--- wlanconfig.orig	2021-10-18 04:39:18.330931000 +0300
++++ wlanconfig	2021-10-18 15:27:37.321060000 +0300
+@@ -32,7 +32,7 @@
+ BSDCFG_SHARE="/usr/share/bsdconfig"
+ . $BSDCFG_SHARE/common.subr || exit 1
+ f_include $BSDCFG_SHARE/dialog.subr
+-f_dialog_backtitle "FreeBSD Installer"
++f_dialog_backtitle "MyBee Installer"
+ 
+ ############################################################ FUNCTIONS
+ 

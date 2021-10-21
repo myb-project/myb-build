@@ -1,0 +1,11 @@
+--- docsinstall.orig	2021-10-18 04:39:18.330161000 +0300
++++ docsinstall	2021-10-18 15:20:41.592060000 +0300
+@@ -61,7 +61,7 @@
+ msg_esdoc_desc="Spanish Documentation"
+ msg_frdoc_desc="French Documentation"
+ msg_freebsd_documentation_installation="FreeBSD Documentation Installation"
+-msg_freebsd_installer="FreeBSD Installer"
++msg_freebsd_installer="MyBee Installer"
+ msg_hudoc_desc="Hungarian Documentation"
+ msg_itdoc_desc="Italian Documentation"
+ msg_jadoc_desc="Japanese Documentation"

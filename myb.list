@@ -1,0 +1,10 @@
+# list for 'cbsd cpr':
+# cbsd cpr pkglist=myb.list dstdir=/tmp/mybrepo new=1
+/usr/ports/security/ca_root_nss
+/usr/ports/sysutils/cbsd
+/usr/ports/net/beanstalkd
+/usr/ports/sysutils/cbsd-mq-api
+/usr/ports/sysutils/cbsd-mq-router
+/usr/ports/www/nginx
+/usr/ports/sysutils/tmux
+/usr/ports/sysutils/genisoimage

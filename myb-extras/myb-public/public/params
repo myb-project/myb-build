@@ -1,0 +1,3 @@
+{
+  "params": ["id", "init_node", "k8s_name", "vpc", "created", "cluster", "master_hostname", "k8s_ver", "etcd_ver", "flannel_ver", "init_masters_ips", "init_nodes_ips", "vip", "dns_ip", "coredns_enable", "ingress_host", "kubelet_master", "pv_enable", "pv_nfs_manage_hoster", "pv_metadata_name", "pv_spec_capacity_storage", "pv_spec_volumemode", "pv_spec_accessmodes", "pv_spec_storageclassname", "pv_spec_mountoptions", "pv_spec_nfs_path", "pv_spec_server", "master_vm_ram", "master_vm_cpus", "master_vm_imgsize", "worker_vm_ram", "worker_vm_cpus", "worker_vm_imgsize", "master_interface", "worker_interface", "ip4_gw", "flannel_net", "flannel_mtu", "email"]
+}

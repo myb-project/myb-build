@@ -1,0 +1,11 @@
+--- hardening.orig	2021-10-18 04:39:18.330253000 +0300
++++ hardening	2021-10-18 15:21:14.171968000 +0300
+@@ -33,7 +33,7 @@
+ echo -n > $BSDINSTALL_TMPBOOT/loader.conf.hardening
+ 
+ exec 3>&1
+-FEATURES=$( dialog --backtitle "FreeBSD Installer" \
++FEATURES=$( dialog --backtitle "MyBee Installer" \
+     --title "System Hardening" --nocancel --separate-output \
+     --checklist "Choose system security hardening options:" \
+     0 0 0 \

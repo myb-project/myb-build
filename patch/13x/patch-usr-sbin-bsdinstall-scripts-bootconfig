@@ -1,0 +1,15 @@
+--- bootconfig.orig	2021-10-18 04:39:18.330063000 +0300
++++ bootconfig	2021-10-19 00:42:50.128803000 +0300
+@@ -58,8 +58,10 @@
+ 	esac
+ 	BOOTDIR="/efi/boot"
+ 	BOOTNAME="${BOOTDIR}/boot${ARCHBOOTNAME}.efi"
+-	FREEBSD_BOOTDIR="/efi/freebsd"
+-	FREEBSD_BOOTNAME="${FREEBSD_BOOTDIR}/loader.efi"
++#	FREEBSD_BOOTDIR="/efi/freebsd"
++#	FREEBSD_BOOTNAME="${FREEBSD_BOOTDIR}/loader.efi"
++	FREEBSD_BOOTDIR="/efi/boot"
++	FREEBSD_BOOTNAME="${FREEBSD_BOOTDIR}/bootx64.efi"
+ 	mntpt="$BSDINSTALL_CHROOT/boot/efi"
+ 
+ 	f_dprintf "Installing loader.efi onto ESP"
