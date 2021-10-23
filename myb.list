@@ -8,3 +8,5 @@
 /usr/ports/www/nginx
 /usr/ports/sysutils/tmux
 /usr/ports/sysutils/genisoimage
+/usr/ports/security/py-certbot
+/usr/ports/net/vether-kmod

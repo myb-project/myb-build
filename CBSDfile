@@ -1,0 +1,12 @@
+quiet=0
+
+jail_mybee1()
+{
+	ver=13.0
+	baserw=1
+	astart=0
+	ip4_addr="DHCP"
+	host_hostname="${jname}.my.domain"
+	pkg_bootstrap=1
+	runasap=1
+}

@@ -536,8 +536,8 @@ sysrc -qf /etc/rc.conf \
 
 cd /cbsd
 # FIND
-tar xfz pkg-1.17.2.pkg
-/cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg-1.17.2.pkg
+tar xfz pkg.pkg
+/cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg.pkg
 /cbsd/usr/local/sbin/pkg-static add -f /cbsd/*.pkg
 
 /usr/local/bin/rsync -avz /cbsd/jail-skel/ /

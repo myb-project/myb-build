@@ -248,39 +248,41 @@ chmod 0777 /var/coredumps
 uplink_iface4=$( /sbin/route -n -4 get 0.0.0.0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
 ip=$( /sbin/ifconfig ${uplink_iface4} | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
 
-cat > /usr/local/etc/cbsd-mq-api.json <<EOF
-{
-    "cbsdenv": "/usr/jails",
-    "cbsdcolor": false,
-    "broker": "beanstalkd",
-    "logfile": "/dev/stdout",
-    "recomendation": "/usr/local/cbsd/modules/api.d/misc/recomendation.sh",
-    "freejname": "/usr/local/cbsd/modules/api.d/misc/freejname.sh",
-    "server_url": "http://${ip}",
-    "cloud_images_list": "/usr/local/etc/cbsd_api_cloud_images.json",
-    "iso_images_list": "/usr/local/etc/cbsd_api_iso_images.json",
-    "beanstalkd": {
-      "uri": "127.0.0.1:11300",
-      "tube": "cbsd_zpool1",
-      "reply_tube_prefix": "cbsd_zpool1_result_id",
-      "reconnect_timeout": 5,
-      "reserve_timeout": 5,
-      "publish_timeout": 5,
-      "logdir": "/var/log/cbsdmq"
-    }
-}
-EOF
+#cat > /usr/local/etc/cbsd-mq-api.json <<EOF
+#{
+#    "cbsdenv": "/usr/jails",
+#    "cbsdcolor": false,
+#    "broker": "beanstalkd",
+#    "logfile": "/dev/stdout",
+#    "recomendation": "/usr/local/cbsd/modules/api.d/misc/recomendation.sh",
+#    "freejname": "/usr/local/cbsd/modules/api.d/misc/freejname.sh",
+#    "server_url": "http://${ip}",
+#    "cloud_images_list": "/usr/local/etc/cbsd_api_cloud_images.json",
+#    "iso_images_list": "/usr/local/etc/cbsd_api_iso_images.json",
+#    "beanstalkd": {
+#      "uri": "127.0.0.1:11300",
+#      "tube": "cbsd_zpool1",
+#      "reply_tube_prefix": "cbsd_zpool1_result_id",
+#      "reconnect_timeout": 5,
+#      "reserve_timeout": 5,
+#      "publish_timeout": 5,
+#      "logdir": "/var/log/cbsdmq"
+#    }
+#}
+#EOF
 
+#sed -i '' -Ees:%%IP%%:${ip}:g /usr/local/www/public/index.html
 
-sed -i '' -Ees:%%IP%%:${ip}:g /usr/local/www/public/index.html
+# set IP for API/public.html/..
+/root/bin/auto_ip.sh
 
-cat > /etc/issue <<EOF
-
- === Welcome to MyBee 21.10 ===
- * API: http://${ip}
- * SSH: ${ip}
-
-EOF
+#cat > /etc/issue <<EOF
+#
+# === Welcome to MyBee 21.10 ===
+# * API: http://${ip}
+# * SSH: ${ip}
+#
+#EOF
 
 cat > ~cbsd/etc/bhyve-default-default.conf <<EOF
 skip_bhyve_init_warning=1

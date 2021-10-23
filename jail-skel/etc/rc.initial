@@ -18,7 +18,13 @@ trap : 18
 
 # Set our operating platform
 PLATFORM="MyBee"
-version="21.10"
+# ${myb_version}
+if [ -r /usr/local/etc/mybee/version ]; then
+	. /usr/local/etc/mybee/version
+fi
+
+[ -z "${myb_version}" ] && myb_version="unknown"
+
 producturl="https://myb.convectix.com"
 
 while : ; do
@@ -41,7 +47,7 @@ while : ; do
 	fi
 
 	echo
-	echo "Welcome to ${PLATFORM} ${version}!"
+	echo "Welcome to ${PLATFORM} ${myb_version}!"
 	echo
 	echo -e "    Copyright (c) 2013-2021 CBSD Team"
 	echo -e "    Copyright (c) 2021 ConvectIX Team"
