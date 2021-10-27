@@ -10,6 +10,7 @@ export workdir="${cbsd_workdir}"
 . /usr/local/cbsd/cbsd.conf
 . /usr/local/cbsd/subr/ansiicolor.subr
 . /usr/jails/nc.inventory
+. /usr/local/cbsd/subr/nc.subr
 # Make sure the user can't kill us by pressing Ctrl-C
 trap : 2
 trap : 3
@@ -29,6 +30,34 @@ fi
 producturl="https://myb.convectix.com"
 
 while : ; do
+	# re-read ACL on/off
+	. /etc/rc.conf
+
+	if [ -z "${PUB_WL}" ]; then
+		PUB_WL="disabled"
+		${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+	fi
+	if [ -z "${IP_WL}" ]; then
+		IP_WL="disabled"
+		${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+	fi
+
+	case ${PUB_WL} in
+		enabled)
+			PUB_WL_COLOR="${H2_COLOR}"
+			;;
+		disabled)
+			PUB_WL_COLOR="${W1_COLOR}"
+			;;
+	esac
+	case ${IP_WL} in
+		enabled)
+			IP_WL_COLOR="${H2_COLOR}"
+			;;
+		disabled)
+			IP_WL_COLOR="${W1_COLOR}"
+			;;
+	esac
 
 	uplink_iface4=$( /sbin/route -n -4 get 0.0.0.0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
 	uplink_iface6=$( /sbin/route -n -6 get ::0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
@@ -48,7 +77,7 @@ while : ; do
 	fi
 
 	echo
-	echo "Welcome to ${PLATFORM} ${myb_version}!"
+	echo "Welcome to ${PLATFORM} ${myb_version} console."
 	echo
 	echo -e "    Copyright (c) 2013-2021 CBSD Team"
 	echo -e "    Copyright (c) 2021 ConvectIX Team"
@@ -61,8 +90,8 @@ while : ; do
 	echo
 	echo "Console Menu"
 	echo "------------"
-	echo -e "1) (Re)Configure Network         ${DGRAY}10) Configure Hosts Allow for API${NORMAL}"
-	echo -e "2) Reset 'root' user password    11) Configure Pubkey WhiteList${NORMAL}"
+	echo -e "1) (Re)Configure Network         10) Configure Hosts Allow for API (${IP_WL_COLOR}${IP_WL}${NORMAL})"
+	echo -e "2) Reset 'root' user password    11) Configure Pubkey WhiteList (${PUB_WL_COLOR}${PUB_WL}${NORMAL})"
 	echo -e "${DGRAY}3) Configure VPN access for API${NORMAL}  ${DGRAY}12) Add cluster node${NORMAL}"
 	echo -e "${DGRAY}4) Change VM network profile${NORMAL}     13) Console Keyboard Map"
 	echo -e "${DGRAY}5) Install container template${NORMAL}    ${DGRAY}14) NFS/PVC/P9FS shares for VM${NORMAL}"
@@ -123,11 +152,41 @@ while : ; do
 			read p
 			;;
 		10)
-			echo "not implemented yet"
+			case ${IP_WL} in
+				enabled)
+					if getyesno "Turn ACL OFF? ('n' or '0' - leave as enabled) "; then
+						IP_WL="disabled"
+						${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+					fi
+					;;
+				disabled)
+					if getyesno "Turn ACL ON? ('n' or '0' - leave as disabled) "; then
+						IP_WL="enabled"
+						${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+					fi
+					;;
+			esac
+			cbsd myb_ip_whitelist
+			echo "press key"
 			read p
 		;;
 		11)
-			cbsd myb_whitelist
+			case ${PUB_WL} in
+				enabled)
+					if getyesno "Turn Pubkey ACL OFF? ('n' or '0' - leave as enabled) "; then
+						PUB_WL="disabled"
+						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+					fi
+					;;
+				disabled)
+					if getyesno "Turn Pubkey ACL ON? ('n' or '0' - leave as disabled) "; then
+						PUB_WL="enabled"
+						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+					fi
+					;;
+			esac
+			cbsd myb_pub_whitelist
+			echo "press key"
 			read p
 			;;
 		12)

@@ -1,5 +1,6 @@
 # List of the allowed cbsd commands
 SECCMD="\
 ${SECCMD}
-myb_whitelist \
+myb_ip_whitelist \
+myb_pub_whitelist \
 "

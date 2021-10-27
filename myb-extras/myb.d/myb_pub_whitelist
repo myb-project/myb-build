@@ -51,7 +51,7 @@ if [ -n "${diff}" ]; then
 	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist changed${N0_COLOR}"
 	${ECHO} "${N1_COLOR}Install new whitelist..${N0_COLOR}"
 	${MV_CMD} ${WHITELIST_FILE}.tmp ${WHITELIST_FILE}
-	service cbsd-mq-api restart
+	${SERVICE_CMD} cbsd-mq-api restart
 else
 	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist unchanged${N0_COLOR}"
 fi
