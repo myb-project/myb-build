@@ -1,4 +1,5 @@
 #!/bin/sh
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 #
 # /etc/rc.initial
 #
@@ -61,17 +62,16 @@ while : ; do
 	echo "Console Menu"
 	echo "------------"
 	echo -e "1) (Re)Configure Network         ${DGRAY}10) Configure Hosts Allow for API${NORMAL}"
-	echo -e "2) Reset 'root' user password    ${DGRAY}11) Configure Pubkey WhiteList${NORMAL}"
+	echo -e "2) Reset 'root' user password    11) Configure Pubkey WhiteList${NORMAL}"
 	echo -e "${DGRAY}3) Configure VPN access for API${NORMAL}  ${DGRAY}12) Add cluster node${NORMAL}"
 	echo -e "${DGRAY}4) Change VM network profile${NORMAL}     13) Console Keyboard Map"
 	echo -e "${DGRAY}5) Install container template${NORMAL}    ${DGRAY}14) NFS/PVC/P9FS shares for VM${NORMAL}"
 	echo -e "6) Shell ( warm cloud image )    ${DGRAY}15) Set API FQDN ( + certbot )${NORMAL}"
 	echo -e "7) Reboot Server                 ${DGRAY}16) Kubernetes cluster${NORMAL}"
-	echo -e "8) Shutdown Server"
-
+	echo -e "8) Shutdown Server               17) Turn ON/OFF Hosts Allow ACL${NORMAL}"
+	echo -e "                                 19) Turn ON/OFF Pubkey Whitelist ACL ACL${NORMAL}"
 	echo
-	read -p "Enter a number:
-" opmode
+	read -p "Enter a number:" opmode
 
 	# see what the user has chosen
 	case ${opmode} in
@@ -96,49 +96,50 @@ while : ; do
 			echo "not implemented yet"
 			read p
 		 	;;
-			3)
-				passwd root
-				;;
-			4)
-				echo "not implemented yet"
-				read p
-				;;
-			5)
-				/etc/rc.initial.ping
-				echo "not implemented yet"
-				read p
-				;;
-			6)
-				/root/bin/checkiso.sh
-				exit
-				;;
-			7)
-				/etc/rc.initial.reboot
-				;;
-			8)
-				/etc/rc.initial.halt
-				;;
-			9)
-				echo "not implemented yet"
-				read p
-				;;
-			10)
-				echo "not implemented yet"
-				read p
-				;;
-			11)
-				echo "not implemented yet"
-				read p
-				;;
-			12)
-				echo "not implemented yet"
-				read p
-				;;
-			13)
-				/usr/sbin/kbdmap
-				;;
-			 *)
-				;;
-		esac
-	done
-fi
+		3)
+			passwd root
+			;;
+		4)
+			echo "not implemented yet"
+			read p
+			;;
+		5)
+			/etc/rc.initial.ping
+			echo "not implemented yet"
+			read p
+			;;
+		6)
+			/root/bin/checkiso.sh
+			exit
+			;;
+		7)
+			/etc/rc.initial.reboot
+			;;
+		8)
+			/etc/rc.initial.halt
+			;;
+		9)
+			echo "not implemented yet"
+			read p
+			;;
+		10)
+			echo "not implemented yet"
+			read p
+		;;
+		11)
+			cbsd myb_whitelist
+			read p
+			;;
+		12)
+			echo "not implemented yet"
+			read p
+			;;
+		13)
+			/usr/sbin/kbdmap
+			;;
+		 *)
+			;;
+	esac
+done
+
+exit 0

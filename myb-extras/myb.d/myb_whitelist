@@ -1,0 +1,59 @@
+#!/usr/local/bin/cbsd
+MYARG=
+MYOPTARG=
+MYDESC="Manage CBSD API whitelist file via mcedit"
+CBSDMODULE="myb"
+ADDHELP="
+
+${H3_COLOR}Description${N0_COLOR}:
+
+Manage /usr/local/etc/cbsd-mq-api.allow content via mcedit.
+
+"
+
+WHITELIST_FILE="/usr/local/etc/cbsd-mq-api.allow"
+
+[ ! -r ${WHITELIST_FILE} ] && ${TOUCH_CMD} ${WHITELIST_FILE}
+
+TEMP_FILE=$( mktemp )
+${CAT_CMD} > ${TEMP_FILE} <<EOF
+# use 'authorized_keys' file format: one key per line in the form of "type key comment":
+# ^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-[^ ]+) ([^ ]+) ?(.*)
+EOF
+
+${GREP_CMD} -v '^#' ${WHITELIST_FILE} | ${GREP_CMD} . | ${SORT_CMD} -u >> ${TEMP_FILE}
+
+trap "[ -r ${TEMP_FILE} ] && /bin/rm -f ${TEMP_FILE}" HUP INT ABRT BUS TERM EXIT
+
+. ${distdir}/subr/settings-tui-virtual.subr
+. ${distdir}/subr/tools.subr
+. ${dialog}
+
+while [ true ]; do
+	/usr/local/bin/mcedit -b +1024 ${TEMP_FILE}
+
+	${GREP_CMD} -v ^# ${TEMP_FILE} | ${GREP_CMD} . | while read _line; do
+		if ! is_valid_ssh_key "${_line}"; then
+			f_dialog_msgbox "Invalid string:\n[${_line}]"
+			exit 1
+		fi
+	done
+	ret=$?
+
+	[ ${ret} -eq 0 ] && break
+done
+
+${GREP_CMD} -v ^# ${TEMP_FILE} | ${GREP_CMD} . | ${SORT_CMD} -u > ${WHITELIST_FILE}.tmp
+
+diff=$( diff -ruN ${WHITELIST_FILE}.tmp ${WHITELIST_FILE} )
+
+if [ -n "${diff}" ]; then
+	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist changed${N0_COLOR}"
+	${ECHO} "${N1_COLOR}Install new whitelist..${N0_COLOR}"
+	${MV_CMD} ${WHITELIST_FILE}.tmp ${WHITELIST_FILE}
+	service cbsd-mq-api restart
+else
+	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist unchanged${N0_COLOR}"
+fi
+
+exit 0

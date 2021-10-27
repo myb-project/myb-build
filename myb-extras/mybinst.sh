@@ -4,7 +4,7 @@ clear
 service netif restart > /dev/null 2>&1
 service routing restart > /dev/null 2>&1
 echo
-echo " *** MyBee post-install script *** "
+echo " *** [MyBee post-install script] *** "
 echo
 
 cd /cbsd
@@ -13,12 +13,16 @@ cd /cbsd
 #/cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg-1.17.2.pkg
 #/cbsd/usr/local/sbin/pkg-static add -f /cbsd/*.pkg
 
-mv /cbsd/api.d /usr/local/cbsd/modules/
-# dist cbsd
+# dist cbsd: put as /root/myb-build/myb-extras/cbsd-dist
+#pkg remove -y cbsd || true
 #rm -rf /usr/local/cbsd
 #rm -f /usr/local/bin/cbsd
 #mv /cbsd/cbsd-dist /usr/local/cbsd
+#make -C /usr/local/cbsd
+
 mv /cbsd/myb-public/public /usr/local/www/
+mv /cbsd/api.d /usr/local/cbsd/modules/
+mv /cbsd/myb.d /usr/local/cbsd/modules/
 
 [ ! -d /var/log/cbsdmq ] && mkdir -p /var/log/cbsdmq
 
@@ -71,7 +75,7 @@ statsd_hoster_enable="0"
 EOF
 
 echo "SETUP CBSD"
-export NOINTER=1 
+export NOINTER=1
 export workdir=/usr/jails
 /usr/local/cbsd/sudoexec/initenv /tmp/initenv.conf
 
@@ -160,6 +164,7 @@ pkg.d
 bsdconf.d
 zfsinstall.d
 api.d
+myb.d
 EOF
 
 env NOINTER=1 /usr/local/bin/cbsd initenv
