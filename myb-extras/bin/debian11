@@ -2,3 +2,4 @@
 
 profile="vm-linux-cloud-Debian-x86-11.conf"
 cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
+/root/bin/checkiso.sh

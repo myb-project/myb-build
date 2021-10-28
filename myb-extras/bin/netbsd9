@@ -2,3 +2,4 @@
 
 profile="vm-netbsd-cloud-netbsd-x86-9.conf"
 cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
+/root/bin/checkiso.sh

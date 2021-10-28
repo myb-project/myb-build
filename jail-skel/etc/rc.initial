@@ -176,12 +176,16 @@ while : ; do
 					if getyesno "Turn Pubkey ACL OFF? ('n' or '0' - leave as enabled) "; then
 						PUB_WL="disabled"
 						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+						${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531" > /dev/null 2>&1
+						${SERVICE_CMD} cbsd-mq-api restart
 					fi
 					;;
 				disabled)
 					if getyesno "Turn Pubkey ACL ON? ('n' or '0' - leave as disabled) "; then
 						PUB_WL="enabled"
 						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+						${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531 -allowlist /usr/local/etc/cbsd-mq-api.allow" > /dev/null 2>&1
+						${SERVICE_CMD} cbsd-mq-api restart
 					fi
 					;;
 			esac

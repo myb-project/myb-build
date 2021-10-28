@@ -297,7 +297,7 @@ interface="bridge0"
 EOF
 
 mkdir /var/nginx /usr/local/www/status
-mv /cbsd/bin /root
+rsync -avz /cbsd/bin/ /root/bin/
 
 cat > /etc/rc.local <<EOF
 export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"

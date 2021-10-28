@@ -541,6 +541,8 @@ tar xfz pkg.pkg
 /cbsd/usr/local/sbin/pkg-static add -f /cbsd/*.pkg
 
 /usr/local/bin/rsync -avz /cbsd/jail-skel/ /
+[ ! -d /root/bin ] && mkdir -p /root/bin
+/usr/local/bin/rsync -avz /cbsd/myb-extras/bin/ /root/bin/
 
 cat > /etc/rc.initial <<EOF
 /usr/bin/tail -f /var/log/mybinit.log
