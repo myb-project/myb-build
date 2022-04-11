@@ -10,6 +10,11 @@ ${H3_COLOR}Description${N0_COLOR}:
 Manage /usr/local/etc/cbsd-mq-api.allow content via mcedit.
 
 "
+EXTHELP=
+
+. ${subrdir}/tools.subr
+. ${subrdir}/cbsdinit.subr
+. ${subrdir}/system.subr
 
 WHITELIST_FILE="/usr/local/etc/cbsd-mq-api.allow"
 

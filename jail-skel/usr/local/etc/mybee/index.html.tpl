@@ -2,7 +2,7 @@
 <html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="UTF-8">
-    <title>MyBee - The most simplified API for creating and destroying virtual machines</title>
+    <title>MyBee - The most simplified API for creating and destroying K8S & cloud VMs</title>
     <link rel="stylesheet" href="/font-awesome.min.css">
     <link rel="stylesheet" href="/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 </head>
@@ -51,7 +51,7 @@ pre {
 <body>
 <pre>
     <output id="content">
-    <span id="welcome"></span><span id="platform" style="display: none;"># <a href="https://myb.convectix.com">MyBee</a> - The most simplified API for creating and destroying virtual machines</span>
+    <span id="welcome"></span><span id="platform" style="display: none;"># <a href="https://myb.convectix.com">MyBee</a> - The most simplified API for creating and destroying K8S& cloudVMs</span>
     <span id="plans" style="display: none;"># the number of VMs is limited only by your resources. Dashboard: <a target="_blank" href="%%SCHEMA%%://%%IP%%/status">%%SCHEMA%%://%%IP%%/status</a></span>
     <span id="curlimg1" style="display: none;">[you@home ~$]</span><span id="curlimg"></span>
     <span id="othercmd" style="display: none;">
@@ -61,18 +61,18 @@ pre {
     # get available images:
     [you@home ~$] curl %%SCHEMA%%://%%IP%%/images
 
-    [you@home ~$] cat centos7.json
+    [you@home ~$] cat debian11.json
     {
       "type": "bhyve",
       "imgsize": "10g",
       "ram": "1g",
       "cpus": "2",
-      "img": "centos7",
+      "image": "debian11",
       "pubkey": "ssh-ed25519 AAAA..XXX your@localhost"
     }
 
     # create cluster by data:
-    [you@home ~$] curl -X POST -H "Content-Type: application/json" -d @centos7.json %%SCHEMA%%://%%IP%%/api/v1/create/vm1
+    [you@home ~$] curl -X POST -H "Content-Type: application/json" -d @debian11.json %%SCHEMA%%://%%IP%%/api/v1/create/vm1
 
     # get your namespace status:
     [you@home ~$] curl -H "cid:&lt;cid&gt;" %%SCHEMA%%://%%IP%%/api/v1/cluster
@@ -89,13 +89,14 @@ pre {
     # destroy vm
     [you@home ~$] curl -H "cid:&lt;cid&gt;" %%SCHEMA%%://%%IP%%/api/v1/destroy/vm1
     </span>
-    <span id="contactus" style="display: none;">
-    # Get <strong>nubectl</strong>, MyBee thin client for <a href="/nubectl-freebsd/nubectl">FreeBSD</a>, <a href="/nubectl-linux/nubectl">Linux, <a href="/nubectl-darwin/nubectl">MacOS/Darwin</a>, <a href="/nubectl-windows/nubectl">Windows</a>
-    # Reach us <a href="https://github.com/convectix/myc-build">on GitHub</a>
-    # Reach us <a href="https://t.me/MyBee">on Telegram</a>
-    # Reach us <a href="https://twitter.com/">on Twitter</a>
-    # Support the project: <a href="https://www.patreon.com/clonos">via Patreon</a>
-    </span>
+     <span id="contactus" style="display: none;">
+     # Сheck out <a target="_blank" href="https://github.com/myb-project/guide">MyB Handbook</a> before start.
+
+     # Get <strong>nubectl</strong>, MyBee thin client for <a href="/nubectl-freebsd/nubectl">FreeBSD</a>, <a href="/nubectl-linux/nubectl">Linux, <a href="/nubectl-darwin/nubectl">MacOS/Darwin</a>, <a href="/nubectl-windows/nubectl">Windows</a>
+     # Reach us <a target="_blank" href="https://t.me/mybgroup">on Telegram</a>
+     # Reach us <a target="_blank" href="https://twitter.com/">on Twitter</a>
+     # Support the project: <a target="_blank" href="https://www.patreon.com/clonos">via Patreon</a>
+     </span>
     </output>
 </pre>
 <script src="jq.js"></script>

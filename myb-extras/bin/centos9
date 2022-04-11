@@ -1,5 +1,5 @@
 #!/bin/sh
 
-profile="vm-openbsd-cloud-openbsd-x86-7.conf"
+profile="vm-linux-cloud-CentOS-stream-9-x86_64.conf"
 cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
 exec /root/bin/checkiso.sh

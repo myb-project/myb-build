@@ -19,7 +19,7 @@ alias ll	ls -lAF
 # A righteous umask
 umask 22
 
-set path = (/sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/bin $HOME/bin)
+set path = ($HOME/bin /sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/bin)
 
 setenv	EDITOR	vi
 setenv	PAGER	less

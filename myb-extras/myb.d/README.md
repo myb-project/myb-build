@@ -1,5 +1,5 @@
 # myb
-CBSD myb intergration module
+MyBee scripts for CBSD
 
 To install:
 

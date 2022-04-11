@@ -4,8 +4,9 @@
 
 ECHO="echo -e"
 
-check="centos7 centos8 debian10 debian11 freebsd13_ufs freebsd13_zfs freebsd14_ufs freebsd14_zfs netbsd9 openbsd7 opnsense21 oracle7 oracle8 rocky8 ubuntu20"
+check="jail centos7 centos8 debian10 debian11 freebsd13_ufs freebsd13_zfs freebsd14_ufs freebsd14_zfs kubernetes netbsd9 openbsd7 opnsense21 oracle7 oracle8 rocky8 ubuntu20"
 
+jail_iso="/usr/jails/basejail/base_amd64_amd64_13.1/bin/sh"
 centos7_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-7.9.0-x86_64-cloud.raw"
 centos8_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-stream-8.0-x86_64-cloud.raw"
 rocky8_iso="/usr/jails/src/iso/cbsd-cloud-Rocky-8-x86_64-cloud.raw"
@@ -18,6 +19,7 @@ freebsd13_ufs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-ufs-13.0.1-RELEASE-amd6
 freebsd13_zfs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-zfs-13.0.1-RELEASE-amd64.raw"
 freebsd14_ufs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-ufs-14-CURRENT-amd64.raw"
 freebsd14_zfs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-zfs-14-CURRENT-amd64.raw"
+kubernetes_iso="/usr/jails/src/iso/cbsd-cloud-cloud-kubernetes-23.raw"
 openbsd7_iso="/usr/jails/src/iso/cbsd-cloud-openbsd-70.raw"
 netbsd9_iso="/usr/jails/src/iso/cbsd-cloud-netbsd-9.2a.raw"
 opnsense21_iso="/usr/jails/src/iso/cbsd-cloud-OPNSense-21-RELEASE-amd64.raw"
@@ -26,14 +28,20 @@ for i in ${check}; do
 	link=
 	eval link="\$${i}_iso"
 	found=0
+
 	if [ -n "${link}" ]; then
-
-		if [ -h ${link} ]; then
-			vol=
-			vol=$( readlink ${link} )
-
-			[ -c ${vol} ] && found=1
-		fi
+		case "${i}" in
+			jail)
+				[ -x ${link} ] && found=1
+				;;
+			*)
+				if [ -h ${link} ]; then
+					vol=
+					vol=$( readlink ${link} )
+					[ -c ${vol} ] && found=1
+				fi
+				;;
+		esac
 	fi
 
 	if [ ${found} -eq 1 ]; then
@@ -43,5 +51,7 @@ for i in ${check}; do
 	fi
 
 done
+
+exec /bin/sh
 
 exit 0

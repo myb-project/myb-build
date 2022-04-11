@@ -1,0 +1,21 @@
+{
+  "images": [
+    "centos7",
+    "centos8",
+    "debian10",
+    "debian11",
+    "freebsd13_ufs",
+    "freebsd13_zfs",
+    "freebsd14_ufs",
+    "freebsd14_zfs",
+    "jail",
+    "kubernetes",
+    "netbsd9",
+    "openbsd7",
+    "opnsense21",
+    "oracle7",
+    "oracle8",
+    "rocky8",
+    "ubuntu20"
+  ]
+}

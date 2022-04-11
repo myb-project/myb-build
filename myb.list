@@ -9,5 +9,5 @@
 /usr/ports/sysutils/tmux
 /usr/ports/sysutils/genisoimage
 /usr/ports/security/py-certbot
-/usr/ports/net/vether-kmod
 /usr/ports/misc/mc
+/usr/ports/mail/mutt

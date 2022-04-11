@@ -1,6 +1,6 @@
 #!/bin/sh
 set +e
-mybbasever="13.0"
+mybbasever="13.1"
 jname="mybee1"
 
 pgm="${0##*/}"				# Program basename

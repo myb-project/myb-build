@@ -29,9 +29,18 @@ fi
 
 producturl="https://myb.convectix.com"
 
+HOSTNAME=$( hostname -s )
+/usr/sbin/pw usermod root -c "${PLATFORM} ${HOSTNAME}"
+
+MYB_SMTP_CONFIG_FILE="/usr/local/etc/smtp.conf"
+
 while : ; do
+	# exit loop
+	[ -r /tmp/stop ] && exit 0
 	# re-read ACL on/off
 	. /etc/rc.conf
+
+	[ -r ${MYB_SMTP_CONFIG_FILE} ] && . ${MYB_SMTP_CONFIG_FILE}
 
 	if [ -z "${PUB_WL}" ]; then
 		PUB_WL="disabled"
@@ -76,11 +85,26 @@ while : ; do
 		ip4=$( /sbin/ifconfig | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
 	fi
 
+	VPN_COLOR="${H2_COLOR}"
+	[ ! -x /root/bin/vpn.sh ] && VPN_COLOR="${DGRAY}"
+	PROFILE_COLOR="${H2_COLOR}"
+	[ ! -x /root/bin/net_profile.sh ] && PROFILE_COLOR="${DGRAY}"
+	TEMPLATE_COLOR="${H2_COLOR}"
+	[ ! -x /root/bin/template.sh ] && TEMPLATE_COLOR="${DGRAY}"
+
+	if [ "${SMTP_CONFIGURED}" = "1" ]; then
+		SMTP_COLOR="${H2_COLOR}"
+		SMTP_STATUS=" configured "
+	else
+		SMTP_COLOR="${DGRAY}"
+		SMTP_STATUS="unconfigured"
+	fi
+
 	echo
 	echo "Welcome to ${PLATFORM} ${myb_version} console."
 	echo
-	echo -e "    Copyright (c) 2013-2021 CBSD Team"
-	echo -e "    Copyright (c) 2021 ConvectIX Team"
+	echo -e "    Copyright (c) 2013-2022 CBSD Team"
+	echo -e "    Copyright (c) 2021-2022 ConvectIX Team"
 	echo -e "    ${LCYAN}Visit: $producturl for system updates! ${N0_COLOR}"
 	echo
 	echo -e "        API address: ${W1_COLOR}http://${ip4}${N0_COLOR}"
@@ -90,28 +114,33 @@ while : ; do
 	echo
 	echo "Console Menu"
 	echo "------------"
-	echo -e "1) (Re)Configure Network         10) Configure Hosts Allow for API (${IP_WL_COLOR}${IP_WL}${NORMAL})"
-	echo -e "2) Reset 'root' user password    11) Configure Pubkey WhiteList (${PUB_WL_COLOR}${PUB_WL}${NORMAL})"
-	echo -e "${DGRAY}3) Configure VPN access for API${NORMAL}  ${DGRAY}12) Add cluster node${NORMAL}"
-	echo -e "${DGRAY}4) Change VM network profile${NORMAL}     13) Console Keyboard Map"
-	echo -e "${DGRAY}5) Install container template${NORMAL}    ${DGRAY}14) NFS/PVC/P9FS shares for VM${NORMAL}"
-	echo -e "6) Shell ( warm cloud image )    ${DGRAY}15) Set API FQDN ( + certbot )${NORMAL}"
-	echo -e "7) Reboot Server                 ${DGRAY}16) Kubernetes cluster${NORMAL}"
-	echo -e "8) Shutdown Server               17) Turn ON/OFF Hosts Allow ACL${NORMAL}"
-	echo -e "                                 19) Turn ON/OFF Pubkey Whitelist ACL ACL${NORMAL}"
+	echo -e "${H2_COLOR}1) (Re)Configure Host Network${NORMAL}     ${H2_COLOR}10) Configure Hosts Allow for API ${IP_WL_COLOR}(${IP_WL})${NORMAL}"
+	echo -e "${H2_COLOR}2) Reset 'root' user password${NORMAL}     ${H2_COLOR}11) Configure Pubkey WhiteList ${PUB_WL_COLOR}(${PUB_WL})${NORMAL}"
+	echo -e "${VPN_COLOR}3) Configure VPN access for API${NORMAL}   ${DGRAY}12) Add cluster node${NORMAL}"
+	echo -e "${PROFILE_COLOR}4) Change VM network profile${NORMAL}      ${H2_COLOR}13) Console Keyboard Map${NORMAL}"
+	echo -e "${TEMPLATE_COLOR}5) Install container template${NORMAL}     ${DGRAY}14) NFS/PVC/P9FS shares for VM${NORMAL}"
+	echo -e "${H2_COLOR}6) Shell ( warm cloud image )${NORMAL}     ${DGRAY}15) Set API FQDN ( + certbot )${NORMAL}"
+	echo -e "${H2_COLOR}7) Reboot Server${NORMAL}                  ${DGRAY}16) Kubernetes cluster${NORMAL}"
+	echo -e "${H2_COLOR}8) Shutdown Server${NORMAL}                ${H2_COLOR}17) Turn ON/OFF Hosts Allow ACL${NORMAL}"
+	echo -e "${H2_COLOR}9) Configure SMTP${NORMAL} (${SMTP_COLOR}${SMTP_STATUS}${NORMAL})  ${H2_COLOR}18) Turn ON/OFF Pubkey Whitelist ACL ACL${NORMAL}"
+	echo
+	echo -e "${H2_COLOR}0) Exit${NORMAL}"
 	echo
 	read -p "Enter a number:" opmode
 
 	# see what the user has chosen
 	case ${opmode} in
+		0)
+			exit 0
+			;;
 		1)
 			bsdinstall netconfig
 			if [ -r /tmp/bsdinstall_etc/resolv.conf ]; then
-				cp -a /tmp/bsdinstall_etc/resolv.conf
+				cp -a /tmp/bsdinstall_etc/resolv.conf /etc/resolv.conf
 			fi
 			if [ -r /tmp/bsdinstall_etc/rc.conf.net ]; then
 				cut -d "=" -f 1 /tmp/bsdinstall_etc/rc.conf.net | while read _param; do
-					cp /etc/rc.conf /etc/rc.conf.bak
+					grep . /etc/rc.conf > /etc/rc.conf.bak
 					# sed 'd
 					grep -v ${_param} /etc/rc.conf.bak > /etc/rc.conf
 				done
@@ -138,8 +167,8 @@ while : ; do
 			read p
 			;;
 		6)
+			export PATH=/root/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 			/root/bin/checkiso.sh
-			exit
 			;;
 		7)
 			/etc/rc.initial.reboot
@@ -148,8 +177,7 @@ while : ; do
 			/etc/rc.initial.halt
 			;;
 		9)
-			echo "not implemented yet"
-			read p
+			/usr/local/bin/cbsd config_smtp
 			;;
 		10)
 			case ${IP_WL} in
@@ -163,10 +191,10 @@ while : ; do
 					if getyesno "Turn ACL ON? ('n' or '0' - leave as disabled) "; then
 						IP_WL="enabled"
 						${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+						cbsd myb_ip_whitelist
 					fi
 					;;
 			esac
-			cbsd myb_ip_whitelist
 			echo "press key"
 			read p
 		;;
@@ -186,10 +214,10 @@ while : ; do
 						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
 						${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531 -allowlist /usr/local/etc/cbsd-mq-api.allow" > /dev/null 2>&1
 						${SERVICE_CMD} cbsd-mq-api restart
+						cbsd myb_pub_whitelist
 					fi
 					;;
 			esac
-			cbsd myb_pub_whitelist
 			echo "press key"
 			read p
 			;;
@@ -200,7 +228,7 @@ while : ; do
 		13)
 			/usr/sbin/kbdmap
 			;;
-		 *)
+		*)
 			;;
 	esac
 done

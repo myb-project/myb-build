@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/usr/local/bin/cbsd repo action=get sources=base
+exec /root/bin/checkiso.sh

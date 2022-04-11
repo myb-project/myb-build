@@ -79,6 +79,7 @@ export NOINTER=1
 export workdir=/usr/jails
 /usr/local/cbsd/sudoexec/initenv /tmp/initenv.conf
 
+#  sshd_flags="-oUseDNS=no -oPermitRootLogin=without-password -oPort=22" \
 sysrc \
  nginx_enable="YES" \
  cbsdd_enable="YES" \
@@ -92,7 +93,7 @@ sysrc \
  cbsd_mq_router_enable="YES" \
  cbsd_mq_api_enable="YES" \
  sshd_enable="YES" \
- sshd_flags="-oUseDNS=no -oPermitRootLogin=without-password -oPort=22" \
+ sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" \
  syslogd_enable="NO" \
  sendmail_enable="NO" \
  sendmail_submit_enable="NO" \
@@ -200,6 +201,7 @@ cp -a /usr/local/cbsd/modules/api.d/etc/api.conf ~cbsd/etc/
 cp -a /cbsd/bhyve-api.conf ~cbsd/etc/
 cp -a /usr/local/cbsd/modules/api.d/etc/jail-api.conf ~cbsd/etc/
 cp -a /cbsd/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_images.json
+cp -a /cbsd/syslog.conf /etc/syslog.conf
 
 sysrc -qf ~cbsd/etc/api.conf server_list="${hostname}"
 sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="10.0.0.1"
@@ -299,13 +301,13 @@ EOF
 mkdir /var/nginx /usr/local/www/status
 rsync -avz /cbsd/bin/ /root/bin/
 
-cat > /etc/rc.local <<EOF
-export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
-/sbin/ifconfig bridge0 create
-/sbin/ifconfig bridge0 10.0.0.1/24 up
-#/usr/sbin/valectl -h vale1:vether1
-/root/bin/update_cluster_status.sh
-EOF
+#cat > /etc/rc.local <<EOF
+#export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+#/sbin/ifconfig bridge0 create
+#/sbin/ifconfig bridge0 10.0.0.1/24 up
+##/usr/sbin/valectl -h vale1:vether1
+#/root/bin/update_cluster_status.sh
+#EOF
 
 [ ! -d /usr/local/etc/sudoers.d ] && mkdir -m 0755 -p /usr/local/etc/sudoers.d
 cat > /usr/local/etc/sudoers.d/10_wheelgroup <<EOF
@@ -315,11 +317,8 @@ EOF
 chmod 0440 /usr/local/etc/sudoers.d/10_wheelgroup
 /usr/local/bin/rsync -avz /cbsd/jail-skel/ /
 
-#while [ true ]; do
-	/usr/bin/wall <<EOF
- MyBee cluster setup complete, reboot host!
+/usr/bin/wall <<EOF
+  MyBee cluster setup complete, reboot host!
 EOF
 sync
 /sbin/reboot
-#	sleep 15
-#done

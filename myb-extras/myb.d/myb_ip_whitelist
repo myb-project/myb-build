@@ -10,10 +10,18 @@ ${H3_COLOR}Description${N0_COLOR}:
 Manage /usr/local/etc/nginx/acl.conf content via mcedit.
 
 "
+EXTHELP=
 
-WHITELIST_FILE="/usr/local/etc/nginx/acl.conf"
+. ${subrdir}/tools.subr
+. ${subrdir}/cbsdinit.subr
+. ${subrdir}/system.subr
 
+WHITELIST_FILE="/usr/local/etc/nginx/acl.txt"
+WHITELIST_NGINX="/usr/local/etc/nginx/acl.conf"
+
+[ ! -d /usr/local/etc/nginx ] && ${MKDIR_CMD} -p /usr/local/etc/nginx
 [ ! -r ${WHITELIST_FILE} ] && ${TOUCH_CMD} ${WHITELIST_FILE}
+[ ! -r ${WHITELIST_NGINX} ] && ${TOUCH_CMD} ${WHITELIST_NGINX}
 
 TEMP_FILE=$( mktemp )
 ${CAT_CMD} > ${TEMP_FILE} <<EOF
@@ -30,32 +38,23 @@ trap "[ -r ${TEMP_FILE} ] && /bin/rm -f ${TEMP_FILE}" HUP INT ABRT BUS TERM EXIT
 . ${distdir}/subr/tools.subr
 . ${dialog}
 
-while [ true ]; do
-	/usr/local/bin/mcedit -b +1024 ${TEMP_FILE}
-
-#	${GREP_CMD} -v ^# ${TEMP_FILE} | ${GREP_CMD} . | while read _line; do
-#		if ! is_valid_ssh_key "${_line}"; then
-#			f_dialog_msgbox "Invalid string:\n[${_line}]"
-#			exit 1
-#		fi
-#	done
-#	ret=$?
-
-#	[ ${ret} -eq 0 ] && break
-	break
-done
+/usr/local/bin/mcedit -b +1024 ${TEMP_FILE}
 
 ${GREP_CMD} -v ^# ${TEMP_FILE} | ${GREP_CMD} . | ${SORT_CMD} -u > ${WHITELIST_FILE}.tmp
 
 diff=$( diff -ruN ${WHITELIST_FILE}.tmp ${WHITELIST_FILE} )
 
-#if [ -n "${diff}" ]; then
-#	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist changed${N0_COLOR}"
-#	${ECHO} "${N1_COLOR}Install new whitelist..${N0_COLOR}"
-#	${MV_CMD} ${WHITELIST_FILE}.tmp ${WHITELIST_FILE}
-#	${SERVICE_CMD} nginx reload
-#else
-#	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist unchanged${N0_COLOR}"
-#fi
+if [ -n "${diff}" ]; then
+	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist changed${N0_COLOR}"
+	${ECHO} "${N1_COLOR}Install new whitelist..${N0_COLOR}"
+	${MV_CMD} ${WHITELIST_FILE}.tmp ${WHITELIST_FILE}
+	${TRUNCATE_CMD} -s0 ${WHITELIST_NGINX}
+	${GREP_CMD} . ${WHITELIST_FILE} | while read _ip; do
+		echo "allow ${_ip}" >> ${WHITELIST_NGINX}
+	done
+	${SERVICE_CMD} nginx reload
+else
+	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist unchanged${N0_COLOR}"
+fi
 
 exit 0
