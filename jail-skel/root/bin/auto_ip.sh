@@ -148,6 +148,7 @@ fi
 cat > /tmp/initenv.conf <<EOF
 nodename="${hostname}"
 nodeip="${nodeip}"
+nodeip6="${nodeip6}"
 jnameserver="8.8.8.8 8.8.4.4"
 nodeippool="10.0.100.0/24"
 nodeip6pool="${mynet6}"

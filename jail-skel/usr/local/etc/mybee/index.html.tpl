@@ -63,7 +63,6 @@ pre {
 
     [you@home ~$] cat debian11.json
     {
-      "type": "bhyve",
       "imgsize": "10g",
       "ram": "1g",
       "cpus": "2",
