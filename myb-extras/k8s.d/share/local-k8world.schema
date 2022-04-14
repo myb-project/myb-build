@@ -1,0 +1,14 @@
+. ${distmoduledir}/k8s.d/share/k8world.conf
+
+# Default SQL scheme for DB local::k8world
+MYTABLE="k8world"
+
+# MYCOL describe in k8s.conf
+id="INTEGER PRIMARY KEY AUTOINCREMENT"
+k8s_name="TEXT UNIQUE"
+
+node_cidr="TEXT DEFAULT \"0\""
+net_id="TEXT DEFAULT \"0\""
+
+CONSTRAINT=
+INITDB=

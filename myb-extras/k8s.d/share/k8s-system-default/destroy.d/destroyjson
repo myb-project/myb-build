@@ -1,0 +1,30 @@
+#!/bin/sh
+
+if [ -z "${k8s_name}" ]; then
+	echo "no such k8s_name variable"
+	exit 1
+fi
+
+TARGET_DIR="/k8s/status"
+TARGET_FILE="${TARGET_DIR}/${k8s_name}"
+[ ! -r ${TARGET_FILE} ] && exit 0
+TEST_DIR=$( realpath ${TARGET_FILE} )
+TEST_DIR=$( dirname ${TEST_DIR} )
+
+[ "${TEST_DIR}" != "${TARGET_DIR}" ] && exit 1
+[ -r ${TARGET_FILE} ] && rm -f ${TARGET_FILE}
+
+# reconfigure nginx
+[ -r /usr/local/etc/nginx/upstreams/${k8s_name}.conf ] && rm -f /usr/local/etc/nginx/upstreams/${k8s_name}.conf
+
+# maps
+search_str="${k8s_name}_backend;"
+
+if grep -q "${search_str}" /usr/local/etc/nginx/maps; then
+	cp -a /usr/local/etc/nginx/maps /usr/local/etc/nginx/maps.bak
+	grep -v "${search_str}" /usr/local/etc/nginx/maps.bak > /usr/local/etc/nginx/maps
+fi
+
+/usr/sbin/service nginx reload
+
+[ -r /k8s/config/${k8s_name}.kubeconfig ] && rm -f /k8s/config/${k8s_name}.kubeconfig

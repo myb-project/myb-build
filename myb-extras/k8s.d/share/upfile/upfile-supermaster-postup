@@ -1,0 +1,36 @@
+postup_%%JNAME%%()
+{
+	local _message="message.txt"
+	local _server=
+
+	truncate -s0 ${_message}
+
+	bscp %%JNAME%%:config config
+	if [ ! -r config ]; then
+		echo "error: bscp %%JNAME%%:config config"
+		exit 1
+	fi
+	chown root:wheel config
+	_server=$( grep server: config | awk '{printf $2}' )
+
+	echo " --- master postup message ---" | tee -a ${_message}
+	${ECHO} "${N1_COLOR}KUBERNETES API AVAILABLE: ${N2_COLOR}${_server}${N0_COLOR}" | tee -a ${_message}
+	echo
+	${ECHO} "${N1_COLOR}Info: ${N0_COLOR}" | tee -a ${_message}
+	${ECHO} "${N1_COLOR}   kubectl --kubeconfig ${N2_COLOR}${myworkdir}/config${N1_COLOR} get nodes${N0_COLOR}" | tee -a ${_message}
+	${ECHO} "${N1_COLOR}   env KUBECONFIG=${N2_COLOR}${myworkdir}.config${N1_COLOR} kubectl cluster-info${N0_COLOR}" | tee -a ${_message}
+	${ECHO} "${N1_COLOR}   (use kubectl --kubeconig or KUBECONFIG env or copy ${N2_COLOR}${myworkdir}/config${N1_COLOR} to /root/.kube/config for global)${N0_COLOR}" | tee -a ${_message}
+
+	if [ "${PV_ENABLE}" != "0" ]; then
+		${ECHO} "${N1_COLOR}   To test PV:${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   echo \"Hello, NFS Storage NGINX\" > /nfs/index.html${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   kubectl get pv${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   Create nfs-pvc on PV: kubectl create -f ${N2_COLOR}/usr/local/cbsd/modules/k8s.d/scripts/nfs-pvc-example.yaml${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   To get nfs-pvc status: ${N2_COLOR}kubectl get pv nfs-pv${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   Create nginx pod with shared FS: kubectl create -f ${N2_COLOR}/usr/local/cbsd/modules/k8s.d/scripts/nfs-pv-pod.yaml${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   To get nginx pod status: ${N2_COLOR}kubectl get pod nginx-pv-pod -o wide${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   Use port forward to test if necessary: ${N2_COLOR}kubectl port-forward nginx-pv-pod 80:80${N0_COLOR}" | tee -a ${_message}
+		${ECHO} "${N1_COLOR}   Get index: curl ${N2_COLOR}http://127.0.0.1${N0_COLOR}" | tee -a ${_message}
+	fi
+	echo " --- master postup message ---" | tee -a ${_message}
+}

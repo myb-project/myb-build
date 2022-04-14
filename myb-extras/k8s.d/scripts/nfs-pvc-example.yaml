@@ -1,0 +1,17 @@
+---
+# accessmode:
+# ReadWriteOnce - The volume can be mounted for reading and writing to one pod.
+# ReadOnlyMany - The volume can be mounted on multiple pods in read-only mode.
+# ReadWriteMany - The volume can be mounted to multiple pods in read and write mode.
+# A restriction on the type of access can be imposed by the type of the store itself. For example, RBD or iSCSI storage does not support ReadWriteMany access.
+#  One PV can only be used by one PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi

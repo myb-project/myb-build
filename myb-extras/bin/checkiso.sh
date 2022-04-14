@@ -1,5 +1,11 @@
 #!/bin/sh
 
+if [ -n "${1}" ]; then
+	checkonly=1
+else
+	checkonly=0
+fi
+
 . /usr/local/cbsd/subr/ansiicolor.subr
 
 ECHO="echo -e"
@@ -8,13 +14,13 @@ check="jail centos7 centos8 debian10 debian11 freebsd13_ufs freebsd13_zfs freebs
 
 jail_iso="/usr/jails/basejail/base_amd64_amd64_13.1/bin/sh"
 centos7_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-7.9.0-x86_64-cloud.raw"
-centos8_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-stream-8.0-x86_64-cloud.raw"
+centos8_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-stream-8-20211117-x86_64-cloud.raw"
 rocky8_iso="/usr/jails/src/iso/cbsd-cloud-Rocky-8-x86_64-cloud.raw"
 oracle7_iso="/usr/jails/src/iso/cbsd-cloud-Oracle-7.9.0-x86_64-cloud.raw"
 oracle8_iso="/usr/jails/src/iso/cbsd-cloud-Oracle-8.4.0-x86_64-cloud.raw"
 ubuntu20_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Ubuntu-x86-20.04.2.raw"
 debian10_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Debian-x86-10.9.1.raw"
-debian11_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Debian-x86-11.1.0.raw"
+debian11_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Debian-x86-11.3.0.raw"
 freebsd13_ufs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-ufs-13.0.1-RELEASE-amd64.raw"
 freebsd13_zfs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-zfs-13.0.1-RELEASE-amd64.raw"
 freebsd14_ufs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-ufs-14-CURRENT-amd64.raw"
@@ -49,9 +55,8 @@ for i in ${check}; do
 	else
 		${ECHO} "${N1_COLOR}image for '${N2_COLOR}${i}${N1_COLOR}': ${W1_COLOR}not found${N1_COLOR}, please run as root: '${N2_COLOR}${i}${N1_COLOR}'${N0_COLOR}"
 	fi
-
 done
 
-exec /bin/sh
+[ ${checkonly} -eq 0 ] && exec /bin/sh
 
 exit 0

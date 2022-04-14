@@ -11,6 +11,7 @@ dstdir=$( mktemp -d )
 # cleanup old pkg ?
 #/var/cache/packages/pkgdir-cpr9ca75 (host) -> /tmp/packages (jail)
 
+echo "cbsd cpr pkglist=/root/myb-build/myb.list dstdir=${dstdir}"
 cbsd cpr pkglist=/root/myb-build/myb.list dstdir=${dstdir}
 
 if [ -d ${progdir}/cbsd ]; then

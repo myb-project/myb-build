@@ -23,6 +23,7 @@ cd /cbsd
 mv /cbsd/myb-public/public /usr/local/www/
 mv /cbsd/api.d /usr/local/cbsd/modules/
 mv /cbsd/myb.d /usr/local/cbsd/modules/
+mv /cbsd/k8s.d /usr/local/cbsd/modules/
 
 [ ! -d /var/log/cbsdmq ] && mkdir -p /var/log/cbsdmq
 
@@ -56,7 +57,7 @@ cat > /tmp/initenv.conf <<EOF
 nodename="${hostname}"
 nodeip="${ip4_addr}"
 jnameserver="8.8.8.8 8.8.4.4"
-nodeippool="10.0.0.0/24"
+nodeippool="10.0.100.0/24"
 natip="${ip4_addr}"
 nat_enable="pf"
 mdtmp="8"
@@ -98,8 +99,9 @@ sysrc \
  sendmail_enable="NO" \
  sendmail_submit_enable="NO" \
  sendmail_outbound_enable="NO" \
- sendmail_msp_queue_enable="NO"
-
+ sendmail_msp_queue_enable="NO" \
+ cloned_interfaces="bridge100" \
+ ifconfig_bridge100="inet 10.0.100.1/24 up"
 
 cat > /etc/sysctl.conf <<EOF
 security.bsd.see_other_uids = 0
@@ -166,6 +168,7 @@ bsdconf.d
 zfsinstall.d
 api.d
 myb.d
+k8s.d
 EOF
 
 env NOINTER=1 /usr/local/bin/cbsd initenv
@@ -204,7 +207,7 @@ cp -a /cbsd/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_images.json
 cp -a /cbsd/syslog.conf /etc/syslog.conf
 
 sysrc -qf ~cbsd/etc/api.conf server_list="${hostname}"
-sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="10.0.0.1"
+sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="10.0.100.1"
 
 tube_name=$( echo ${hostname} | tr '.' '_' )
 
@@ -226,7 +229,17 @@ cat > /usr/local/etc/cbsd-mq-router.json <<EOF
 }
 EOF
 
-chown cbsd:cbsd ~cbsd/etc/api.conf
+cat > /usr/jails/etc/k8s.conf <<EOF
+ZPOOL=zroot
+ZFS_K8S="${ZPOOL}/k8s"
+ZFS_K8S_MNT="/k8s"
+api_env_name="env"
+server_list="${tube_name}"
+PV_SPEC_SERVER="10.0.100.1"
+multi_nic="0"
+EOF
+
+chown cbsd:cbsd ~cbsd/etc/api.conf ~cbsd/etc/k8s.conf
 mkdir -p /var/db/cbsd-api /usr/jails/var/db/api/map
 chown -R cbsd:cbsd /var/db/cbsd-api /usr/jails/var/db/api/map
 
@@ -294,8 +307,8 @@ ip=$( /sbin/ifconfig ${uplink_iface4} | /usr/bin/awk '/inet [0-9]+/{print $2}'| 
 cat > ~cbsd/etc/bhyve-default-default.conf <<EOF
 skip_bhyve_init_warning=1
 create_cbsdsystem_tap=0
-ci_gw4="10.0.0.1"
-interface="bridge0"
+ci_gw4="10.0.100.1"
+interface="bridge100"
 EOF
 
 mkdir /var/nginx /usr/local/www/status
@@ -316,6 +329,14 @@ EOF
 
 chmod 0440 /usr/local/etc/sudoers.d/10_wheelgroup
 /usr/local/bin/rsync -avz /cbsd/jail-skel/ /
+
+# k8s
+mkdir -p /var/db/cbsd-k8s /usr/jails/var/db/k8s/map
+chown -R cbsd:cbsd /var/db/cbsd-k8s /usr/jails/var/db
+
+# hooks/status update
+ln -sf /root/bin/update_cluster_status.sh /usr/jails/share/bhyve-system-default/master_poststop.d/update_cluster_status.sh
+ln -sf /root/bin/update_cluster_status.sh /usr/jails/share/bhyve-system-default/master_poststart.d/update_cluster_status.sh
 
 /usr/bin/wall <<EOF
   MyBee cluster setup complete, reboot host!

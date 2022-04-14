@@ -168,6 +168,7 @@ while : ; do
 			;;
 		6)
 			export PATH=/root/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+			export MYB_SUBSHELL=1
 			/root/bin/checkiso.sh
 			;;
 		7)

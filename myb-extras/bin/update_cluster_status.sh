@@ -169,13 +169,18 @@ ls -1 | sort | while read _profile; do
 					;;
 				vm)
 					profile="${vm_os_type}/${vm_os_profile}"
+					if [ -e /dev/vmm/${gid} ]; then
+						env_color="#aaff00"
+					else
+						env_color="#b9b9b9"
+					fi
 					;;
 			esac
 
 			hw="${cpus}/${ram_human}/${imgsize_human}"
 
 			node=$( cat /var/db/cbsd-api/${_profile}/${_file}.node | awk '{printf $1}' )
-			echo "<tr><td>${id}</td><td bgcolor=\"#aaff00\">${host_hostname}</td><td>${profile}</td><td>${hw}</td><td bgcolor=\"#dadcdd\">${ssh_string}</td><td>${hostname}</td><td>${gid}</td></tr>" >> ${tmpfile}
+			echo "<tr><td>${id}</td><td bgcolor=\"${env_color}\">${host_hostname}</td><td>${profile}</td><td>${hw}</td><td bgcolor=\"#dadcdd\">${ssh_string}</td><td>${hostname}</td><td>${gid}</td></tr>" >> ${tmpfile}
 			id=$(( id + 1 ))
 		done
 	fi

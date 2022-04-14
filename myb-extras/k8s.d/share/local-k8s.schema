@@ -1,0 +1,98 @@
+. ${distmoduledir}/k8s.d/share/k8s.conf
+
+# Default SQL scheme for DB local::k8s
+MYTABLE="k8s"
+
+# MYCOL describe in k8s.conf
+id="INTEGER PRIMARY KEY AUTOINCREMENT"
+init_node="TEXT DEFAULT 0"
+k8s_name="TEXT UNIQUE"
+vpc="TEXT DEFAULT 0"
+created="TIMESTAMP DATE DEFAULT (datetime('now','localtime'))"
+
+cluster="TEXT DEFAULT \"k8s-bhyve.io\""
+master_hostname="TEXT DEFAULT \"master.k8s-bhyve.io\""
+# https://github.com/kubernetes/kubernetes/releases
+k8s_ver="TEXT DEFAULT \"v1.23.5\""
+# https://github.com/etcd-io/etcd
+etcd_ver="TEXT DEFAULT \"v3.5.2\""
+# https://github.com/containerd/containerd/releases
+containerd_ver="TEXT DEFAULT \"1.6.0\""
+# https://github.com/flannel-io/flannel/releases
+flannel_ver="TEXT DEFAULT \"v0.16.3\""
+# https://github.com/coredns/coredns/releases
+coredns_ver="TEXT DEFAULT \"v1.9.0\""
+# https://github.com/kubernetes-sigs/cri-tools/releases
+cri_tools_ver="TEXT DEFAULT \"v1.23.0\""
+# https://github.com/opencontainers/runc/releases
+runc_ver="TEXT DEFAULT \"v1.1.0\""
+# https://github.com/containernetworking/plugins/releases
+cni_plugins_linux_ver="TEXT DEFAULT \"v1.0.1\""
+init_master_ips="TEXT DEFAULT \"DHCP\""
+init_master_ips2="TEXT DEFAULT \"0\""
+init_worker_ips="TEXT DEFAULT \"DHCP\""
+vip="TEXT DEFAULT \"DHCP\""
+dns_ip="TEXT DEFAULT \"172.18.0.2\""
+coredns_enable="INTEGER DEFAULT 1"
+ingress_host="TEXT DEFAULT \"master.k8s-bhyve.io\""
+kubelet_master="INTEGER DEFAULT 1"
+
+pv_enable="TEXT DEFAULT \"0\""
+pv_nfs_manage_hoster="INTEGER DEFAULT 1"
+pv_metadata_name="TEXT DEFAULT \"nfs-pv\""
+#pv_spec_capacity_storage="TEXT DEFAULT \"10Gi\""
+pv_spec_capacity_storage="TEXT DEFAULT \"10\""
+pv_spec_volumemode="TEXT DEFAULT \"Filesystem\""
+pv_spec_accessmodes="TEXT DEFAULT \"ReadWriteMany\""
+pv_spec_storageclassname="TEXT DEFAULT \"nfs\""
+pv_spec_mountoptions="TEXT DEFAULT \"hard nfsvers=4.1\""
+pv_spec_nfs_path="TEXT DEFAULT \"0\""
+pv_spec_server="TEXT DEFAULT \"0\""
+
+master_vm_ram="TEXT DEFAULT \"2g\""
+master_vm_cpus="INTEGER DEFAULT 2"
+master_vm_imgsize="TEXT DEFAULT \"20g\""
+
+worker_vm_ram="TEXT DEFAULT \"1g\""
+worker_vm_cpus="INTEGER DEFAULT 1"
+worker_vm_imgsize="TEXT DEFAULT \"20g\""
+
+master_interfaces="TEXT DEFAULT \"auto\""
+worker_interfaces="TEXT DEFAULT \"auto\""
+
+flannel_net="TEXT DEFAULT \"172.17.0.0/16\""
+flannel_mtu="TEXT DEFAULT \"1450\""
+
+ip4_gw="TEXT DEFAULT \"0\""
+bhyve_list="TEXT DEFAULT \"0\""
+server_dns="TEXT DEFAULT \"kubernetes.local,kubernetes.default.svc,kubernetes.default,kubernetes,localhost,master\""
+server_kubeconfig="TEXT DEFAULT \"0\""
+email="TEXT DEFAULT \"0\""
+
+masters="INTEGER DEFAULT 0"
+workers="INTEGER DEFAULT 0"
+
+node_cidr="TEXT DEFAULT \"0\""
+clusteriprange="TEXT DEFAULT \"172.18.0.0/24\""
+container_engine="TEXT DEFAULT \"containerd\""
+
+# extra IPs for server_ip, e.g. external balancer
+server_ip_extra="TEXT DEFAULT \"0\""
+
+# NTP servers
+ntp_servers="TEXT DEFAULT \"pool.ntp.org\""
+
+# callback url
+callback_url="TEXT DEFAULT \"0\""
+
+# second interface
+ci_interface2="TEXT DEFAULT \"0\""
+
+# second IP address (cloud-init)
+ci_ip4_addr2="TEXT DEFAULT \"0\""
+
+# GW gw for second IP (cloud-init)
+ci_gw42="TEXT DEFAULT \"0\""
+
+CONSTRAINT=
+INITDB=

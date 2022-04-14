@@ -39,7 +39,7 @@ else
 	old_v6=
 fi
 
-if [ "${old_v4}" = "${ip4}" -a "${old_v6}" = "ip6}" ]; then
+if [ "${old_v4}" = "${ip4}" -a "${old_v6}" = "${ip6}" ]; then
 	echo "[${ip4}/${ip6}] unchanged"
 	exit 0
 fi
@@ -49,6 +49,9 @@ echo "-- ${old_v4}"
 echo "-- ${old_v6}"
 echo "++ ${ip4}"
 echo "++ ${ip6}"
+
+/usr/sbin/sysrc -qf /var/db/mybee/auto_ip.conf old_v4="${ip4}" > /dev/null 2>&1
+/usr/sbin/sysrc -qf /var/db/mybee/auto_ip.conf old_v6="${ip6}" > /dev/null 2>&1
 
 # triggering/refresh services/config
 
@@ -116,3 +119,56 @@ else
 		rm -f /tmp/issue.$$
 	fi
 fi
+
+nodeip6=
+mynet6=
+
+if [ -n "${ip6}" -a "${ip6}" != "::1" ]; then
+	nodeip6="${ip6}"
+	/usr/local/cbsd/misc/sipcalc ${ip6}/64 > /tmp/sipcalc.conf
+	. /tmp/sipcalc.conf
+	mynet="${_subnet_ipv6_prefix}"
+	if [ -n "${mynet}" ]; then
+		/usr/local/cbsd/misc/sipcalc ${mynet}/64 > /tmp/sipcalc2.conf
+		. /tmp/sipcalc2.conf
+		[ -n "${_compressed_ipv6_address}" ] && mynet6="${_compressed_ipv6_address}/64"
+	fi
+	[ -z "${mynet6}" ] && mynet6="0"
+else
+	nodeip6="0"
+fi
+
+if [ -n "${ip4}" ]; then
+	nodeip="${ip4}"
+else
+	nodeip="0"
+fi
+
+# reconfigure CBSD
+cat > /tmp/initenv.conf <<EOF
+nodename="${hostname}"
+nodeip="${nodeip}"
+jnameserver="8.8.8.8 8.8.4.4"
+nodeippool="10.0.100.0/24"
+nodeip6pool="${mynet6}"
+natip="${nodeip}"
+nat_enable="pf"
+mdtmp="8"
+ipfw_enable="1"
+zfsfeat="1"
+hammerfeat="0"
+fbsdrepo="1"
+repo="http://bsdstore.ru"
+workdir="/usr/jails"
+jail_interface="${uplink_iface4}"
+parallel="5"
+stable="0"
+statsd_bhyve_enable="0"
+statsd_jail_enable="0"
+statsd_hoster_enable="0"
+EOF
+
+echo "SETUP CBSD"
+export NOINTER=1
+export workdir=/usr/jails
+/usr/local/cbsd/sudoexec/initenv /tmp/initenv.conf

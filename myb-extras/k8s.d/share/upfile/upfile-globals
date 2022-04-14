@@ -1,0 +1,13 @@
+
+# CBSD upfile global settings
+globals()
+{
+	vm_os_type="linux"
+	vm_os_profile="%%VM_OS_PROFILE%%"
+
+	ip4_gw="%%IP4_GW%%"
+	ci_gw4="${ip4_gw}"
+	imgtype="%%IMGTYPE%%"
+	runasap=1
+	ssh_wait=1
+}

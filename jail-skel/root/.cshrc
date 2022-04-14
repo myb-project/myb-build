@@ -52,5 +52,8 @@ if ($?prompt) then
 endif
 
 #if ( "ttyv0" == "$tty" || "ttyu0" == "$tty" || "xc0" == "$tty" ) then
+if (! $?MYB_SUBSHELL ) then
+	setenv MYB_SUBSHELL 1
 	/etc/rc.initial
+endif
 #endif

@@ -1,0 +1,21 @@
+# kubectl get pv
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: %%PV_METADATA_NAME%%
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+spec:
+  capacity:
+    storage: %%PV_SPEC_CAPACITY_STORAGE%%Gi
+  volumeMode: %%PV_SPEC_VOLUMEMODE%%
+  accessModes:
+    - %%PV_SPEC_ACCESSMODES%%
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: nfs
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: %%PV_SPEC_NFS_PATH%%
+    server: %%PV_SPEC_SERVER%%

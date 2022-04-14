@@ -1,0 +1,41 @@
+# global postup
+postup()
+{
+	local _tmp_yaml="pv.yaml"
+
+	if [ -n "${SERVER_KUBECONFIG}" -a "${SERVER_KUBECONFIG}" != "0" ]; then
+		${ECHO} "${N1_COLOR} * Replace server in kubeconfig: ${N2_COLOR}${SERVER_KUBECONFIG}${N0_COLOR}"
+		${CP_CMD} ${myworkdir}/config ${myworkdir}/config.orig
+		${SED_CMD} "s# server:.*# server: https://${SERVER_KUBECONFIG}#g" ${myworkdir}/config.orig > ${myworkdir}/config
+	fi
+
+	[ -r message.txt ] && cat message.txt
+
+	[ "${PV_ENABLE}" = "0" ] && return 0
+
+	# tmp, Gi postfix in tpl
+	PV_SPEC_CAPACITY_STORAGE=$( echo ${PV_ENABLE} | ${TR_CMD} -d [:alpha:] )
+
+	${ECHO} "${N1_COLOR}create PV...${N0_COLOR}" | tee -a ${_message}
+	sed -Ees:%%PV_METADATA_NAME%%:${PV_METADATA_NAME}:g \
+		-Ees:%%PV_SPEC_CAPACITY_STORAGE%%:${PV_SPEC_CAPACITY_STORAGE}:g \
+		-Ees:%%PV_SPEC_VOLUMEMODE%%:${PV_SPEC_VOLUMEMODE}:g \
+		-Ees:%%PV_SPEC_STORAGECLASSNAME%%:${PV_SPEC_STORAGECLASSNAME}:g \
+		-Ees:%%PV_SPEC_NFS_PATH%%:${PV_SPEC_NFS_PATH}:g \
+		-Ees:%%PV_SPEC_SERVER%%:${PV_SPEC_SERVER}:g \
+		-Ees:%%PV_SPEC_ACCESSMODES%%:${PV_SPEC_ACCESSMODES}:g \
+		/usr/local/cbsd/modules/k8s.d/scripts/nfs-pv.yaml > ${_tmp_yaml}
+
+	if [ -n "${SERVER_KUBECONFIG}" -a "${SERVER_KUBECONFIG}" != "0" ]; then
+		${SED_CMD} "s# server:.*# server: https://${SERVER_KUBECONFIG}#g" ${myworkdir}/config > ${myworkdir}/config.new
+	fi
+
+	echo "kubectl --kubeconfig ${myworkdir}/config apply -f ${_tmp_yaml}"
+	set -o xtrace
+	kubectl --kubeconfig ${myworkdir}/config apply -f ${_tmp_yaml}
+	set +o xtrace
+	kubectl --kubeconfig ${myworkdir}/config get pv | tee -a ${_message}
+	# debug
+	${CP_CMD} ${_tmp_yaml} /tmp/nfs-pv-last.yaml
+	${RM_CMD} -f ${_tmp_yaml} message.txt
+}

@@ -1,0 +1,1144 @@
+#!/usr/local/bin/cbsd
+#v12.2.2
+DIST_MODULE_PATH="${distmoduledir}/k8s.d"
+. ${DIST_MODULE_PATH}/share/k8s.conf
+OPTARGS="${MYCOL} init_masters init_workers"
+MYARG="mode"
+MYOPTARG="${OPTARGS} checkip develop display dryrun gold header human k8s_name runasap"
+MYDESC="Operate with K8S cluster"
+CBSDMODULE="sys"
+ADDHELP="
+${H3_COLOR}Description${N0_COLOR}:
+
+  K8S module is for designed to be used with CBSD kubernetes cloud image.
+  The module is a kubernetes cluster configurator that turns your CBSD
+  into a kind of bhyve-based minikube. Multi-master and multi-worker cluster
+  supported. PV can be configured from master side via NFSv4 (optional).
+
+  Hint: for the initial setup of the NFS server, you may find script useful:
+
+    /usr/local/cbsd/modules/k8s.d/scripts/install.sh
+
+${H3_COLOR}Options${N0_COLOR}:
+
+  checkip=           - check IP when upfile created, default - 1, check.
+  ci_interface2=     - uplink for second interface if neccessary, 0 - disabled, by default;
+  ci_ip4_addr2=      - second interface (on ci_interface2) IP address, 0 - disabled, by default;
+  ci_gw42=           - gateway for second interface/addr (on ci_interface2), 0 - disabled, by default;
+  develop=           - for develop build only.
+  display=           - list by comma for column in 'mode=list',
+                       default: 'name,pkg_vm_cpus,pkg_vm_ram,pkg_vm_disk'.
+  dryrun=            - print command only, don't apply.
+  gold               - for develop build only.
+  header=            - don't print column header in 'mode=list'.
+  human=             - convert to human readable form.
+  k8s_name=          - name of the K8S cluster (one word).
+  mode               - action: init,destroy,list,shortlist,init_upfile:
+    mode=init        - init new K8S cluster, optional args:
+     ${OPTARGS} 
+    mode=init_upfile - generate upfile (locally),
+
+  runasap          - run a cluster immediately (atomic init+init_upfile+up),
+                     default=0.
+
+  cluster           - cluster name
+  master_vm_cpus    - set vcpu for master node (default: 2);
+  master_vm_ram     - set vm_ram for master node (default: 2g);
+  master_vm_imgsize - set size of virtual disk for master node (default: 20g);
+  ntp_servers       - list of NTP servers - local (on the hoster) NTP server are highly recommended!,
+                        default: 'pool.ntp.org'. Can be list: '0.europe.pool.ntp.org 2.europe.pool.ntp.org 3.europe.pool.ntp.org';
+  worker_vm_cpus    - set vcpu for worker node (default: 1);
+  worker_vm_ram     - set vm_ram for worker node (default: 1g);
+  worker_vm_imgsize - set size of virtual disk for worker node (default: 20g);
+  init_masters      - number of master, short alias for init_master_ips=\"DHCP DHCP DHCP DHCP\";
+  init_workers      - number of workers, short alias for init_worker_ips=\"DHCP DHCP DHCP DHCP\";
+  flannel_net       - flannel internal docker/pod subnet;
+  kubelet_master    - Install kubelet on master nodes to combine master+worker role in single env;
+  server_dns        - extra dns names for cluster, comma-separated when multiple;
+  server_kubeconfig - set kubeconfig server to alt name;
+  node_cidr         - alternative CBSD IP POOL for DHCP, e.g: 10.10.0.0/24;
+  worker_interfaces - map 1:1 init_worker_ips to uplink interfaces;
+  master_interfaces - map 1:1 init_master_ips to uplink interfaces;
+
+${H3_COLOR}Examples${N0_COLOR}:
+
+  init example:
+
+    cbsd k8s mode=init k8s_name=k1 init_master_ips=\"10.0.0.2\" vip=DHCP
+    cbsd k8s mode=init k8s_name=k1 init_master_ips=\"10.0.0.2\" init_worker_ips=\"10.0.0.101 10.0.0.102 10.0.0.103\" vip=10.0.0.100 worker_vm_ram=8g worker_vm_cpus=8 worker_imgsize=80g
+    cbsd k8s mode=init k8s_name=k2 init_master_ips=\"DHCP DHCP DHCP\" init_worker_ips=\"DHCP DHCP DHCP\" vip=DHCP cluster=\"k8s-cloud.com\"
+    cbsd k8s mode=init k8s_name=k3 init_master_ips=\"DHCP DHCP DHCP\" init_worker_ips=\"DHCP DHCP DHCP\" vip=DHCP cluster=\"k8s-cloud.com\" master_interfaces=\"cbsdvale_vale1\" worker_interfaces=\"cbsdvale_vale1\" pv_enable=20g pv_spec_nfs_path=/k8s-nfs-share pv_spec_server=192.168.0.1
+    cbsd k8s mode=init k8s_name=k1 init_master_ips=\"10.0.0.2\" vip=DHCP ci_interface2="bridge1" init_master_ips2="2a01:4f8:272:5cee::4" ci_gw42="2a01:4f8:272:5cee::3"
+
+  for gold image:
+    cbsd k8s mode=init k8s_name=gold init_master_ips=10.0.0.28 master_interfaces="cbsdvale_vale1" worker_interfaces="cbsdvale_vale1" ip4_gw=10.0.0.1 develop=1 gold=1
+    cbsd k8s mode=init_upfile k8s_name="gold" develop=1 gold=1
+
+"
+EXTHELP="wf_k8s"
+
+MODULE_PATH="${dbdir}/k8s"
+
+. ${subr}
+dryrun=0
+checkip=1
+gold=0
+develop=0
+runasap=
+init_masters=
+init_workers=
+ntp_servers=
+ip4_gw=
+interface=
+init_master_ips=
+init_master_ips2=
+ci_interface2=
+ci_ip4_addr2=
+ci_gw42=
+
+. ${cbsdinit}
+
+echo "EXEC [$*]" >> /tmp/k8s.log
+
+[ -n "${ip4_gw}" ] && oip4_gw="${ip4_gw}"
+[ -n "${interface}" ] && ointerface="${interface}"
+[ -n "${init_master_ips}" ] && oinit_master_ips="${init_master_ips}"
+[ -n "${init_master_ips2}" ] && oinit_master_ips2="${init_master_ips2}"
+[ -n "${runasap}" ] && orunasap="${runasap}"
+[ -n "${ntp_servers}" ] && ontp_servers="${ontp_servers}"
+
+[ -n "${ci_interface2}" ] && oci_interface2="${ci_interface2}"
+[ -n "${ci_ip4_addr2}" ] && oci_ip4_addr2="${ci_ip4_addr2}"
+[ -n "${ci_gw42}" ] && oci_gw42="${ci_gw42}"
+
+readconf bhyve-default-default.conf
+readconf k8s.conf
+
+. ${system}
+. ${strings}
+. ${subrdir}/jcreate.subr	# for external_exec_master_script
+
+[ -n "${ointerface}" ] && interface="${ointerface}"
+
+if [ -z "${master_interfaces}" ]; then
+	master_interfaces="${interface}"
+else
+	omaster_interfaces="${master_interfaces}"
+fi
+if [ -z "${worker_interfaces}" ]; then
+	worker_interfaces="${interface}"
+else
+	oworker_interfaces="${worker_interfaces}"
+fi
+if [ -z "${ntp_servers}" -a -z "${ontp_servers}" ]; then
+	ntp_servers="pool.ntp.org"
+	ontp_servers="pool.ntp.org"
+fi
+[ -z "${display}" ] && display="k8s_name,cluster,masters,workers,pv_enable"
+[ -z "${header}" ] && header=1
+
+if [ ${gold} -eq 1 ]; then
+	develop=1
+	VM_OS_PROFILE="cloud-ubuntuserver-amd64-20.04"
+	IMGTYPE="md"
+	master_vm_imgsize="6g"
+else
+	VM_OS_PROFILE="cloud-kubernetes-23"
+	IMGTYPE="zvol"
+fi
+
+#remove commas for loop action on header
+mydisplay=$( echo ${display} | ${TR_CMD} ',' '  ' )
+
+# upper for header
+myheader=$( echo ${mydisplay} | ${TR_CMD} '[:lower:]' '[:upper:]' )
+
+show_header()
+{
+	local _header="${BOLD}${myheader}${N0_COLOR}"
+	[ ${header} -eq 1 ] && ${ECHO} ${_header}
+}
+
+# if $1 = "Unregister" then overwrite status to "Unregister"
+populate_output_data()
+{
+	local _i _val _newval
+
+	_status=
+
+	printf "${N0_COLOR}" # for column sort
+
+	#populate values for in output string
+	for _i in ${mydisplay}; do
+		_val=
+		eval _val="\$$_i"
+
+		case "${_i}" in
+			bhyve_list)
+				_newval=
+				for i in ${_val}; do
+					if [ -z "${_newval}" ]; then
+						_newval="${i}"
+					else
+						_newval="${_newval},${i}"
+					fi
+				done
+				_val="${_newval}"
+				;;
+		esac
+
+		[ -z "${_val}" ] && _val="\-"
+		printf "${_val} "
+	done
+
+	printf "\n"
+}
+
+# $1 - which file from. Eg: local
+show_jaildata_from_sql()
+{
+	local _i _dbfile _JCOL _res
+	local _dbpath="${MODULE_PATH}/${1}.sqlite"
+
+	[ ! -r ${_dbpath} ] && return 0
+
+	. ${DIST_MODULE_PATH}/share/local-k8s.schema
+	_JCOL="${MYCOL}"
+
+	#clean sqlite3 schema variables
+	for i in ${_JCOL}; do
+		unset ${i}
+	done
+
+	_ALLJCOL=$( echo ${_JCOL} | ${TR_CMD} " " "," )
+
+	local sqldelimer="|"
+	_A=$( 2>/dev/null cbsdsqlro ${_dbpath} "SELECT ${_ALLJCOL} FROM k8s" )
+	unset sqldelimer
+
+	[ -z "${_A}" ] && return 1
+
+	. ${strings}
+
+	sqllist "${_A}" ${_JCOL}
+
+	populate_output_data
+	return 0
+}
+
+# $1 can be 'full'
+test_for_pv()
+{
+	local _ret
+	local _level="${1}"
+
+	iptype "${PV_SPEC_SERVER}"
+	_ret=$?
+	case "${_ret}" in
+		0)
+			${ECHO} "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}pv_enable set, but PV_SPEC_SERVER unconfigured. Please copy and edit k8s.conf file:${N0_COLOR}"
+			err 1 "${N1_COLOR} cp -a /usr/local/cbsd/modules/k8s.d/etc/k8s.conf ${N2_COLOR}~cbsd/etc/k8s.conf${N0_COLOR}"
+			;;
+		1)
+			;;
+		2)
+			err 1 "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}IPv6 not supported as PV_SPEC_SERVER yet: ${N2_COLOR}${PV_SPEC_SERVER}${N0_COLOR}"
+			;;
+	esac
+
+	[ "${zfsfeat}" != "1" ] && err 1 "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}pv_enable set but ${N2_COLOR}zfsfeat not enabled!${N0_COLOR}"
+
+	[ "${_level}" != "full" ] && return 0
+
+	# at the moment only local NFS server supported.
+	# manage zfs/zpools
+
+	if [ -z "${ZPOOL}" ]; then
+		${ECHO} "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}pv_enable set, but ZPOOL not defined. Please copy and edit k8s.conf file:${N0_COLOR}"
+		err 1 "${N1_COLOR} cp -a /usr/local/cbsd/modules/k8s.d/etc/k8s.conf ${N2_COLOR}~cbsd/etc/k8s.conf${N0_COLOR}"
+	fi
+
+	if ! ${ZPOOL_CMD} list ${ZPOOL} > /dev/null 2>&1; then
+		${ECHO} "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}pv_enable set, but ZPOOL not found: ${N2_COLOR}${ZPOOL}${N1_COLOR}. Please copy and edit k8s.conf file:${N0_COLOR}"
+		err 1 "${N1_COLOR} cp -a /usr/local/cbsd/modules/k8s.d/etc/k8s.conf ${N2_COLOR}~cbsd/etc/k8s.conf${N0_COLOR}"
+	fi
+
+	if ! ${ZFS_CMD} list ${ZFS_K8S} > /dev/null 2>&1; then
+		${ECHO} -n "create ${ZFS_K8S}..."
+		if ! ${ZFS_CMD} create ${ZFS_K8S}; then
+			err 1 "${W1_COLOR}failed${N0_COLOR}"
+		else
+			${ECHO} "${N2_COLOR}ok${N0_COLOR}"
+		fi
+	fi
+
+	TMP_MNT=$( ${ZFS_CMD} get -Hp -o value mountpoint ${ZFS_K8S} 2>/dev/null )
+	if [ "${TMP_MNT}" != "${ZFS_K8S_MNT}" ]; then
+		${ECHO} -n "${N1_COLOR}set mountpoint for ${ZFS_K8S}: ${N2_COLOR}${TMP_MNT} -> ${ZFS_K8S_MNT}${N0_COLOR}"
+		if ! ${ZFS_CMD} set mountpoint=${ZFS_K8S_MNT} ${ZFS_K8S}; then
+			err 1 "${W1_COLOR}failed${N0_COLOR}"
+		else
+			${ZFS_CMD} mount ${ZFS_K8S} > /dev/null 2>&1 || true
+			${ECHO} "${N2_COLOR}ok${N0_COLOR}"
+		fi
+	fi
+
+	if ! ${ZFS_CMD} list ${ZFS_K8S} > /dev/null 2>&1; then
+		err 1 "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}no zfs: ${N2_COLOR}${ZFS_K8S}${N0_COLOR}"
+	fi
+
+	# PV
+	if ! ${ZFS_CMD} list ${ZFS_K8S_PV_ROOT} > /dev/null 2>&1; then
+		${ECHO} "${N1_COLOR}create ${ZFS_K8S_PV_ROOT}...${N0_COLOR}"
+		if ! ${ZFS_CMD} create ${ZFS_K8S_PV_ROOT}; then
+			err 1 "${W1_COLOR}failed${N0_COLOR}"
+		else
+			${ECHO} "${N2_COLOR}ok${N0_COLOR}"
+		fi
+	fi
+
+	TMP_MNT=$( ${ZFS_CMD} get -Hp -o value mountpoint ${ZFS_K8S_PV_ROOT} 2>/dev/null )
+	if [ "${TMP_MNT}" != "${ZFS_K8S_PV_ROOT_MNT}" ]; then
+		${ECHO} "${N1_COLOR}set mountpoint for ${ZFS_K8S_PV_ROOT}: ${N2_COLOR}${TMP_MNT} -> ${ZFS_K8S_PV_ROOT_MNT}${N0_COLOR}"
+		if ! ${ZFS_CMD} set mountpoint=${ZFS_K8S_PV_ROOT_MNT} ${ZFS_K8S_PV_ROOT}; then
+			err 1 "${W1_COLOR}failed${N0_COLOR}"
+		else
+			${ZFS_CMD} mount ${ZFS_K8S_PV_ROOT} > /dev/null 2>&1 || true
+			${ECHO} "${N2_COLOR}ok${N0_COLOR}"
+		fi
+	fi
+	return 0
+}
+
+test_for_ip()
+{
+	printf "   ${N1_COLOR}${CBSD_APP} check ${1}: ${N2_COLOR}${2}${N2_COLOR}..." 1>&2
+	${ARP_CMD} -dn ${2} > /dev/null 2>&1
+	checkip ip=${2} check=1 2>/dev/null
+	if [ $? -eq 2 ]; then
+		${ECHO} "${W1_COLOR}failed, IP already in use?${N0_COLOR}" 1>&2
+	else
+		${ECHO} "${H3_COLOR}ok${N0_COLOR}" 1>&2
+	fi
+}
+
+# $* - additional vars, e.g: $data, $newdata
+export_k8s_data_for_external_hook()
+{
+	local _i T
+
+	# export variables for external hooks
+	export k8s_name=${k8s_name}
+
+	. ${DIST_MODULE_PATH}/share/k8s.conf
+	for _i in ${MYCOL}; do
+		T=
+		eval T="\$$_i"
+		export ${_i}="${T}"
+	done
+
+	return 0
+}
+
+init_k8s()
+{
+	local _dbpath="${MODULE_PATH}/${k8s_name}.sqlite"
+	local _res
+	local _keyfile="${MODULE_PATH}/${k8s_name}_id_ed25519"
+	local _keyfile_pub="${MODULE_PATH}/${k8s_name}_authorized_keys"
+
+	if [ -r ${_dbpath} ]; then
+		_res=$( cbsdsqlro ${_dbpath} "SELECT init_node FROM k8s LIMIT 1" )
+		${ECHO} "${N1_COLOR}K8S already initialized by: ${N2_COLOR}${_res} ${N1_COLOR}( ${_dbpath} )${N0_COLOR}"
+		err 1 "${N1_COLOR}Please use to create CBSDfile: ${N2_COLOR}cbsd k8s mode=init_upfile k8s_name=\"${k8s_name}\"${N0_COLOR}"
+	fi
+
+	local _system_dir="init.d init_upfile.d destroy.d postrunasap.d"
+
+	[ ! -d "${k8s_sys_skel_dir}" ] && ${MKDIR_CMD} -p ${k8s_sys_skel_dir}
+
+	for i in ${_system_dir}; do
+		if [ ! -d "${k8s_sys_skel_dir}/${i}" -a -d "${DIST_MODULE_PATH}/share/k8s-system-default/${i}" ]; then
+			echo "${RSYNC_CMD} -a ${DIST_MODULE_PATH}/share/k8s-system-default/${i} ${k8s_sys_skel_dir}/"
+			${RSYNC_CMD} -a ${DIST_MODULE_PATH}/share/k8s-system-default/${i} ${k8s_sys_skel_dir}/
+		else
+			echo "No such share? [${DIST_MODULE_PATH}/share/k8s-system-default/${i}] :: ${RSYNC_CMD} -a ${DIST_MODULE_PATH}/share/k8s-system-default/${i} ${k8s_sys_skel_dir}/"
+		fi
+	done
+
+	[ -n "${oci_interface2}" ] && ci_interface2="${ci_interface2}"
+	[ -n "${oci_ip4_addr2}" ] && ci_ip4_addr2="${ci_ip4_addr2}"
+	[ -n "${oci_gw42}" ] && ci_gw42="${ci_gw42}"
+
+	[ -z "${ci_interface2}" ] && ci_interface2="0"
+	[ -z "${ci_ip4_addr2}" ] && ci_ip4_addr2="0"
+	[ -z "${ci_gw42}" ] && ci_gw42="0"
+
+	[ -z "${vpc}" ] && vpc="0"
+
+	/usr/local/bin/cbsd ${miscdir}/updatesql ${_dbpath} ${DIST_MODULE_PATH}/share/local-k8s.schema k8s
+	cbsdsqlrw ${_dbpath} "INSERT INTO k8s ( init_node,k8s_name,vpc ) VALUES ( \"${nodename}\", \"${k8s_name}\",\"${vpc}\" )"
+
+	. ${DIST_MODULE_PATH}/share/k8s.conf
+	for i in ${MYCOL}; do
+		case "${i}" in
+			k8s_name|id|vpc)
+				continue
+				;;
+			*)
+				# override from args (oargs=)?
+				eval _res="\$o${i}"
+				if [ -n "${_res}" ]; then
+					_val="${_res}"
+				else
+					eval _val="\$${i}"
+				fi
+				if [ -n "${_val}" ]; then
+					#echo "*** FILLED: $i = ${_val}"
+					cbsdsqlrw ${_dbpath} "UPDATE k8s SET ${i}=\"${_val}\" WHERE k8s_name=\"${k8s_name}\""
+				fi
+				;;
+		esac
+	done
+
+	# optional
+	if [ -z "${init_worker_ips}" ]; then
+		init_worker_ips="0"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET init_worker_ips=\"${init_worker_ips}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+	if [ -z "${cluster}" ]; then
+		cluster="k8s-bhyve.io"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET cluster=\"${cluster}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+	# master_hostname not specified?
+	if [ -z "${master_hostname}" ]; then
+		master_hostname="master.${cluster}"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET master_hostname=\"${master_hostname}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+	# ingress_host not specified?
+	if [ -z "${ingress_host}" ]; then
+		ingress_host="ingress.${cluster}"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET ingress_host=\"${ingress_host}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+
+	if [ -z "${server_kubeconfig}" -a -n "${server_kubeconfig_domain}" ]; then
+		server_kubeconfig="${k8s_name}.${server_kubeconfig_domain}"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET server_kubeconfig=\"${server_kubeconfig}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+	if [ -z "${server_dns}" -a -n "${server_dns_domain}" ]; then
+		server_dns="${k8s_name}.${server_dns_domain}"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET server_dns=\"${server_dns}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+	if [ -n "${server_ip_extra}" ]; then
+		server_ip_extra="${server_ip_extra}"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET server_ip_extra=\"${server_ip_extra}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+	if [ -z "${server_kubeconfig}" -a -n "${server_kubeconfig_ip}" ]; then
+		server_kubeconfig="${server_kubeconfig_ip}"
+		cbsdsqlrw ${_dbpath} "UPDATE k8s SET server_kubeconfig=\"${server_kubeconfig}\" WHERE k8s_name=\"${k8s_name}\""
+	fi
+
+	${SSH_KEYGEN_CMD} -t ed25519 -f ${_keyfile} -N '' > /dev/null
+	${MV_CMD} ${_keyfile}.pub ${_pubfile} ${_keyfile_pub}
+
+	${ECHO} "${N1_COLOR}Success. Please use to create CBSDfile: ${N2_COLOR}cbsd k8s mode=init_upfile k8s_name=\"${k8s_name}\"${N0_COLOR}"
+
+	export_k8s_data_for_external_hook
+	external_exec_master_script "${k8s_sys_skel_dir}/init.d"
+
+	# adjust masters/workers setting
+	masters=0
+	workers=0
+	if [ -z "${init_masters}" ]; then
+		for i in ${init_master_ips}; do
+			masters=$(( masters + 1 ))
+		done
+	else
+		masters="${init_masters}"
+	fi
+	cbsdsqlrw ${_dbpath} "UPDATE k8s SET masters=\"${masters}\" WHERE k8s_name=\"${k8s_name}\""
+
+	if [ -z "${init_workers}" ]; then
+		for i in ${init_worker_ips}; do
+			workers=$(( workers + 1 ))
+		done
+	else
+		workers="${init_workers}"
+	fi
+	cbsdsqlrw ${_dbpath} "UPDATE k8s SET workers=\"${workers}\" WHERE k8s_name=\"${k8s_name}\""
+
+	return 0
+}
+
+list_k8s()
+{
+	local _dbpath _list _i
+	[ ! -d ${MODULE_PATH} ] && return 0
+
+	_i=0
+	_list=$( ${FIND_CMD} "${MODULE_PATH}" -type l -or -type f -depth 1 -maxdepth 1 -name \*.sqlite -exec ${BASENAME_CMD} {} \; | ${SORT_CMD} | while read _file; do
+		# skip for k8sworld db
+		[ "${_file}" = "k8world.sqlite" ] && continue
+		_i=$(( _i + 1 ))
+		[ ${_i} -ne 1 ] && printf " "
+		_p1=${_file%%.sqlite*}
+		printf "${_p1}"
+	done )
+
+	if [ "${1}" = "short" ]; then
+		echo "${_list}"
+		return 0
+	fi
+
+	[ -z "${_list}" ] && return 0
+
+	show_header
+	for _i in ${_list}; do
+		show_jaildata_from_sql ${_i}
+	done
+
+}
+
+# populate k8s_peers table with peer map
+# -d - optional dst dir instead of CBSD_PWD
+init_upfile()
+{
+	local _keyfile="${MODULE_PATH}/${k8s_name}_id_ed25519"
+	local _keyfile_pub="${MODULE_PATH}/${k8s_name}_authorized_keys"
+	local _res _ret _init_master_ips_tmp _init_worker_ips_tmp _dstdir
+
+	while getopts "d:" opt; do
+		case "${opt}" in
+			d) _dstdir="${OPTARG}" ;;
+		esac
+		shift $(($OPTIND - 1))
+	done
+
+	[ -z "${_dstdir}" ] && _dstdir="${CBSD_PWD}"
+
+	[ -r ${_dstdir}/CBSDfile ] && err 1 "${N1_COLOR}${CBSD_APP}: CBSDfile file already exist in directory: ${N2_COLOR}${_dstdir}/CBSDfile${N0_COLOR}"
+	[ -r ${_dstdir}/bootstrap.config ] && err 1 "${N1_COLOR}${CBSD_APP}: bootstrap.config file already exist in directory: ${N2_COLOR}${_dstdir}/bootstrap.config${N0_COLOR}"
+	[ -r ${_dstdir}/config ] && err 1 "${N1_COLOR}${CBSD_APP}: config already exist in directory: ${N2_COLOR}${_dstdir}${N0_COLOR}"
+
+	_dbpath="${MODULE_PATH}/${k8s_name}.sqlite"
+	[ ! -r ${_dbpath} ] && err 1 "${N1_COLOR}K8S not exist: ${N2_COLOR}${_dbpath}${N0_COLOR}"
+	[ ! -r ${_keyfile} ] && err 1 "${N1_COLOR}keyfile not exist: ${N2_COLOR}${_keyfile}${N0_COLOR}"
+	[ ! -r ${_keyfile_pub} ] && err 1 "${N1_COLOR}keyfile_pub not exist: ${N2_COLOR}${_keyfile_pub}${N0_COLOR}"
+
+	. ${DIST_MODULE_PATH}/share/local-k8s.schema
+	_JCOL="${MYCOL}"
+
+	#clean sqlite3 schema variables
+	for i in ${_JCOL}; do
+		unset ${i}
+	done
+
+	_ALLJCOL=$( echo ${_JCOL} | ${TR_CMD} " " "," )
+
+	local sqldelimer="|"
+	_A=$( 2>/dev/null cbsdsqlro ${_dbpath} "SELECT ${_ALLJCOL} FROM k8s" )
+	unset sqldelimer
+
+	[ -z "${_A}" ] && return 1
+
+	. ${strings}
+
+	sqllist "${_A}" ${_JCOL}
+
+	if [ "${coredns_enable}" = "1" ]; then
+		coredns_enable_bool="true"
+	else
+		coredns_enable_bool="false"
+	fi
+
+	etcd_tmpfs="0"
+	enable_debug="1"
+
+	case "${vip}" in
+		[Dd][Hh][Cc][Pp])
+			if [ -n "${node_cidr}" -a "${node_cidr}" != "0" ]; then
+				vip=$( dhcpd ip4pool=${node_cidr} dhcpd_helper=internal )
+				_ret=$?
+			else
+				vip=$( dhcpd )
+				_ret=$?
+			fi
+			[ ${_ret} -eq 2 ] && err 1 "${N1_COLOR}no free IP address for DHCP in nodeippool for: ${N2_COLOR}vip${N0_COLOR}"
+			cbsdsqlrw ${_dbpath} "UPDATE k8s SET vip=\"${vip}\" WHERE k8s_name=\"${k8s_name}\""
+			${ECHO} "   ${N1_COLOR}${CBSD_APP} check VIP ip: DHCP --> ${N2_COLOR}${vip}${N0_COLOR}" 1>&2
+			;;
+		*)
+			[ ${checkip} -eq 1 ] && test_for_ip "virtual ip (vip)" ${vip}
+			;;
+	esac
+
+	init_masters_fqdn=
+	init_masters_hostname=
+	init_workers_fqdn=
+	init_workers_hostname=
+
+	# calc number of members
+	init_masters_num=0
+	_init_master_ips_tmp=
+
+	for i in ${init_master_ips}; do
+		case "${i}" in
+			[Dd][Hh][Cc][Pp])
+				if [ -n "${node_cidr}" -a "${node_cidr}" != "0" ]; then
+					_res=$( dhcpd ip4pool=${node_cidr} dhcpd_helper=internal )
+					_ret=$?
+				else
+					_res=$( dhcpd )
+					_ret=$?
+				fi
+				[ ${_ret} -eq 2 ] && err 1 "${N1_COLOR}no free IP address for DHCP in nodeippool for: ${N2_COLOR}init_master_ips${N0_COLOR}"
+				if [ -z "${_init_master_ips_tmp}" ]; then
+					_init_master_ips_tmp="${_res}"
+				else
+					_init_master_ips_tmp="${_init_master_ips_tmp} ${_res}"
+				fi
+				${ECHO} "   ${N1_COLOR}${CBSD_APP} check master ip: ${i} --> ${N2_COLOR}${_res}${N0_COLOR}" 1>&2
+				;;
+			*)
+				iptype ${i}
+				_ret=$?
+				case ${_ret} in
+					1)
+						;;
+					2)
+						err 1 "${N1_COLOR}${CBSD_APP}: IPv6 not supported yet: ${N2_COLOR}${i}${N0_COLOR}"
+						;;
+					*)
+						err 1 "${N1_COLOR}${CBSD_APP}: unknown IP type/record: ${N2_COLOR}${i}${N0_COLOR}"
+						;;
+				esac
+
+				[ ${checkip} -eq 1 ] && test_for_ip "master ip" ${i}
+				if [ -z "${_init_master_ips_tmp}" ]; then
+					_init_master_ips_tmp="${i}"
+				else
+					_init_master_ips_tmp="${_init_master_ips_tmp} ${i}"
+				fi
+				;;
+		esac
+		init_masters_num=$(( init_masters_num +1 ))
+	done
+
+	init_master_ips="${_init_master_ips_tmp}"
+	[ -z "${init_master_ips}" ] && err 1 "${N1_COLOR}${CBSD_APP} empty init_master_ips=, please re-init cluster${N0_COLOR}"
+	cbsdsqlrw ${_dbpath} "UPDATE k8s SET init_master_ips=\"${_init_master_ips_tmp}\" WHERE k8s_name=\"${k8s_name}\""
+
+	_ret=$(( init_masters_num % 2 ))
+	if [ ${_ret} -eq 0 ]; then
+		${ECHO} "${W1_COLOR}${CBSD_APP} warning: ${N1_COLOR}odd number of master: ${W1_COLOR}${init_masters_num}${N1_COLOR}. Quorum may be defective${N0_COLOR}" 1>&2
+		${ECHO} "${W1_COLOR}${CBSD_APP} warning: ${N1_COLOR}valid number of master: ${N2_COLOR}1,3,5,7,..${N1_COLOR} Hope this OK for you${N0_COLOR}" 1>&2
+	fi
+
+	_init_worker_ips_tmp=
+
+	[ "${init_worker_ips}" = "0" ] && unset init_worker_ips
+
+	if [ -z "${init_worker_ips}" ]; then
+		init_nodes_num=0
+	else
+		init_nodes_num=0
+		for i in ${init_worker_ips}; do
+
+			case "${i}" in
+				[Dd][Hh][Cc][Pp])
+					if [ -n "${node_cidr}" -a "${node_cidr}" != "0" ]; then
+						_res=$( dhcpd ip4pool=${node_cidr} dhcpd_helper=internal )
+						_ret=$?
+					else
+						_res=$( dhcpd )
+						_ret=$?
+					fi
+					[ ${_ret} -eq 2 ] && err 1 "${N1_COLOR}no free IP address for DHCP in nodeippool for: ${N2_COLOR}init_worker_ips${N0_COLOR}"
+					if [ -z "${_init_worker_ips_tmp}" ]; then
+						_init_worker_ips_tmp="${_res}"
+					else
+						_init_worker_ips_tmp="${_init_worker_ips_tmp} ${_res}"
+					fi
+					${ECHO} "   ${N1_COLOR}${CBSD_APP} check node ip: ${i} --> ${N2_COLOR}${_res}${N0_COLOR}" 1>&2
+					;;
+				*)
+					iptype ${i}
+					_ret=$?
+					case ${_ret} in
+						1)
+							;;
+						2)
+							err 1 "${N1_COLOR}${CBSD_APP}: IPv6 not supported yet: ${N2_COLOR}${i}${N0_COLOR}"
+							;;
+						*)
+							err 1 "${N1_COLOR}${CBSD_APP}: unknown IP type/record: ${N2_COLOR}${i}${N0_COLOR}"
+							;;
+					esac
+					[ ${checkip} -eq 1 ] && test_for_ip "node ip" ${i}
+					if [ -z "${_init_worker_ips_tmp}" ]; then
+						_init_worker_ips_tmp="${_res}"
+					else
+						_init_worker_ips_tmp="${_init_worker_ips_tmp} ${_res}"
+					fi
+					;;
+			esac
+			init_nodes_num=$(( init_nodes_num +1 ))
+		done
+	fi
+
+	init_worker_ips="${_init_worker_ips_tmp}"
+	cbsdsqlrw ${_dbpath} "UPDATE k8s SET init_worker_ips=\"${_init_worker_ips_tmp}\" WHERE k8s_name=\"${k8s_name}\""
+
+	_prev_net=0
+
+	[ -n "${oip4_gw}" ] && ip4_gw="${oip4_gw}"
+
+	for src in vip init_worker_ips init_master_ips ip4_gw; do
+		eval i="\$$src"
+		eval $( ${miscdir}/sipcalc ${i}/24 )
+		if [ "${_prev_net}" = "0" ]; then
+			_prev_net="${_network_address}"
+		else
+			[ "${_prev_net}" != "${_network_address}" ] && err 1 "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR} not same network. vip=, init_master_ips, init_worker_ips and ip4_gw= must be on the same subnet: ${N2_COLOR}${_prev_net} != ${src}:${_network_address}${N0_COLOR}"
+		fi
+	done
+
+	# by name
+	api_server="https://${master_hostname}"
+	api_servers="https://${master_hostname}"
+	apiserver_hosts="https://${master_hostname}"
+
+	# by IP
+	api_server="https://${vip}"
+	api_servers="https://${vip}"
+	apiserver_host="https://${vip}"
+
+	ingress_host="${master_hostname}"
+
+	server_ip=
+
+	for i in ${init_master_ips}; do
+		if [ -z "${server_ip}" ]; then
+			server_ip="${i}"
+		else
+			server_ip="${server_ip},${i}"
+		fi
+	done
+
+	[ -n "${server_ip_extra}" -a "${server_ip_extra}" != "0" ] && server_ip="${server_ip},${server_ip_extra}"
+
+	if [ "${pv_enable}" != "0" ]; then
+		test_for_pv
+		if [ -z "${pv_spec_server}" -o "${pv_spec_server}" = "0" ]; then
+			pv_spec_server="${PV_SPEC_SERVER}"
+			cbsdsqlrw ${_dbpath} "UPDATE k8s SET pv_spec_server=\"${pv_spec_server}\" WHERE k8s_name=\"${k8s_name}\""
+		fi
+		iptype "${pv_spec_server}"
+		_ret=$?
+		case "${_ret}" in
+			0)
+				${ECHO} "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}pv_enable set, but pv_spec_server unconfigured. Please copy and edit k8s.conf file:${N0_COLOR}"
+				err 1 "${N1_COLOR} cp -a /usr/local/cbsd/modules/k8s.d/etc/k8s.conf ${N2_COLOR}~cbsd/etc/k8s.conf${N0_COLOR}"
+				;;
+			1)
+				;;
+			2)
+				err 1 "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}IPv6 not supported as pv_spec_server yet: ${N2_COLOR}${pv_spec_server}${N0_COLOR}"
+				;;
+		esac
+
+		if [ -z "${pv_spec_nfs_path}" -o "${pv_spec_nfs_path}" = "0" ]; then
+			pv_spec_nfs_path="${ZFS_K8S_PV_ROOT_MNT}/${k8s_name}"
+			# V4-related path is: /<clustername>
+			#pv_spec_nfs_path="/${k8s_name}"
+			cbsdsqlrw ${_dbpath} "UPDATE k8s SET pv_spec_nfs_path=\"${pv_spec_nfs_path}\" WHERE k8s_name=\"${k8s_name}\""
+		fi
+
+		if [ -z "${pv_spec_capacity_storage}" -o "${pv_spec_capacity_storage}" = "0" ]; then
+			pv_spec_capacity_storage="${PV_SPEC_CAPACITY_STORAGE}"
+			cbsdsqlrw ${_dbpath} "UPDATE k8s SET pv_spec_capacity_storage=\"${pv_spec_capacity_storage}\" WHERE k8s_name=\"${k8s_name}\""
+		fi
+
+		ZFS_K8S_PV_CLUSTER="${ZFS_K8S_PV_ROOT}/${k8s_name}"
+		ZFS_K8S_PV_CLUSTER_MNT="${ZFS_K8S_PV_ROOT_MNT}/${k8s_name}"
+
+	fi
+
+	${SED_CMD} -Ees:%%INIT_MASTER_IPS%%:"${init_master_ips}":g \
+		-es:%%INIT_WORKER_IPS%%:"${init_worker_ips}":g \
+		-es:%%VIP%%:"${vip}":g \
+		-es:%%PV_ENABLE%%:"${pv_enable}":g \
+		-es:%%PV_SPEC_NFS_PATH%%:"${pv_spec_nfs_path}":g \
+		-es:%%PV_SPEC_SERVER%%:"${pv_spec_server}":g \
+		-es:%%PV_SPEC_CAPACITY_STORAGE%%:"${pv_spec_capacity_storage}":g \
+		-es:%%IP4_GW%%:"${ip4_gw}":g \
+		-es:%%DEVELOP%%:"${develop}":g \
+		-es#%%SERVER_KUBECONFIG%%#"${server_kubeconfig}"#g \
+		-es:%%ZFS_K8S_PV_ROOT_MNT%%:"${ZFS_K8S_PV_ROOT_MNT}":g \
+		-es:%%ZFS_K8S_PV_CLUSTER%%:"${ZFS_K8S_PV_CLUSTER}":g \
+		-es:%%ZFS_K8S_PV_CLUSTER_MNT%%:"${ZFS_K8S_PV_CLUSTER_MNT}":g \
+		${DIST_MODULE_PATH}/share/upfile/upfile-header-pv > ${_dstdir}/CBSDfile
+
+	${SED_CMD} -Ees:%%IP4_GW%%:"${ip4_gw}":g \
+		-es:%%VM_OS_PROFILE%%:"${VM_OS_PROFILE}":g \
+		-es:%%IMGTYPE%%:"${IMGTYPE}":g \
+		${DIST_MODULE_PATH}/share/upfile/upfile-globals >> ${_dstdir}/CBSDfile
+
+	${CAT_CMD} ${DIST_MODULE_PATH}/share/upfile/upfile-preup >> ${_dstdir}/CBSDfile
+
+	master_list=
+	if [ ${init_masters_num} -gt 0 ]; then
+		for i in $( ${JOT_CMD} ${init_masters_num} ); do
+			name=$( freejname default_jailname=master )
+			if [ -z "${master_list}" ]; then
+				master_list="${name}"
+			else
+				master_list="${master_list} ${name}"
+			fi
+
+			if [ -z "${server_dns}" -o "${server_dns}" = "0" ]; then
+				server_dns="${name}"
+			else
+				server_dns="${server_dns},${name}"
+			fi
+		done
+	fi
+
+	worker_list=
+	if [ ${init_nodes_num} -gt 0 ]; then
+		for i in $( ${JOT_CMD} ${init_nodes_num} ); do
+			name=$( freejname default_jailname=worker )
+			if [ -z "${worker_list}" ]; then
+				worker_list="${name}"
+			else
+				worker_list="${worker_list} ${name}"
+			fi
+
+			if [ -z "${server_dns}" -o "${server_dns}" = "0" ]; then
+				server_dns="${name}"
+			else
+				server_dns="${server_dns},${name}"
+			fi
+
+		done
+	fi
+
+	if [ -z "${ntp_servers}" -a -n "${oserver_dns}" ]; then
+		ntp_servers="${ontp_servers}"
+	fi
+
+	# get last IP octet as VRID
+	vrid=${vip#*.*.*.}
+	eval $( ${miscdir}/sipcalc ${vrid}/24 )
+
+	# todo: rewrite from true/false to 1/0
+	if [ "${kubelet_master}" = "1" ]; then
+		kubelet_master="true"
+	else
+		kubelet_master="false"
+	fi
+
+	# TODO:
+	# SERVER_DNS += $hostname/fqdn - master1.k8s-bhyve.io
+
+	${CAT_CMD} > ${_dstdir}/bootstrap.config <<EOF
+CLUSTER="${cluster}"
+K8S_NAME="${k8s_name}"
+MASTER_HOSTNAME="${master_hostname}"
+ETCD_VER="${etcd_ver}"
+CONTAINERD_VER="${containerd_ver}"
+FLANNEL_VER="${flannel_ver}"
+K8S_VER="${k8s_ver}"
+CNI_PLUGINS_LINUX_VER="${cni_plugins_linux_ver}"
+CRI_TOOLS_VER="${cri_tools_ver}"
+RUNC_VER="${runc_ver}"
+INIT_MASTERS_NUM="${init_masters_num}"
+INIT_NODES_NUM="${init_nodes_num}"
+INIT_MASTER_IPS="${init_master_ips}"
+INIT_WORKER_IPS="${init_worker_ips}"
+VIP="${vip}"
+API_SERVER="${api_server}"
+API_SERVERS="${api_servers}"
+APISERVER_HOST="${apiserver_host}"
+ETCD_TMPFS="${etcd_tmpfs}"
+ENABLE_DEBUG="${enable_debug}"
+DNS_IP="${dns_ip}"
+INSTALL_COREDNS="${coredns_enable_bool}"
+INGRESS_HOST="${ingress_host}"
+SERVER_IP="${server_ip},${vip},172.18.0.1"
+SERVER_DNS="${server_dns},${master_hostname},kubernetes.default.svc.${cluster},kubernetes.default.svc.${cluster}.uat"
+FLANNEL_MTU="${flannel_mtu}"
+FLANNEL_NET="${flannel_net}"
+VRID="${vrid}"
+DEVELOP="${develop}"
+INSTALL_KUBELET_ON_MASTER="${kubelet_master}"
+POD_CIDR="${flannel_net}"
+CLUSTERIPRANGE="${clusteriprange}"
+NODE_NETWORK="${_network_address}"
+CONTAINER_ENGINE="${container_engine}"
+NTP_SERVERS="${ntp_servers}"
+HAPROXY_ENABLE=0
+EOF
+
+	EXT_IP=
+
+	if [ -n "${init_master_ips2}" ]; then
+		OIFS="${IFS}"
+		IFS=","
+		for i in ${init_master_ips2}; do
+			EXT_IP="${i}"
+			break
+		done
+		IFS="${OIFS}"
+	fi
+
+	if [ -n "${EXT_IP}" ]; then
+		echo "EXT_IP=\"${EXT_IP}\"" >> ${_dstdir}/bootstrap.config
+	fi
+
+	vrid=0
+
+	[ -n "${omaster_interfaces}" ] && master_interfaces="${omaster_interfaces}"
+	[ -n "${oworker_interfaces}" ] && worker_interfaces="${oworker_interfaces}"
+	[ -n "${oinit_master_ips2}" ] && init_master_ips2="${oinit_master_ips2}"
+
+	nic_num=0
+	master_interface1=0
+	master_interface2=0
+
+	[ -z "${ci_ip4_addr2}" ] && ci_ip4_addr2="0"
+	[ -z "${ci_gw42}" ] && ci_gw42="0"
+	[ -z "${init_master_ips2}" ] && init_master_ips2="0"
+
+	for i in ${master_interfaces}; do
+		nic_num=$(( nic_num +1 ))
+		case ${nic_num} in
+			1)
+				master_interface1="${i}"
+				;;
+			2)
+				master_interface2="${i}"
+				;;
+			*)
+				${ECHO} "${N1_COLOR}${CBSD_APP}: only two interface config support: ${N2_COLOR}${master_interfaces}${N0_COLOR}"
+				break
+				;;
+		esac
+	done
+
+	id=1
+	if [ ${gold} -eq 1 ]; then
+		init_role="gold"
+	else
+		init_role="supermaster"
+	fi
+	for i in ${master_list}; do
+		MASTER_NAME="master${id}"
+		#MASTER_NAME="${i}"
+		if [ ${id} -eq 1 ]; then
+			${SED_CMD} -Ees:%%JNAME%%:"${i}":g ${DIST_MODULE_PATH}/share/upfile/upfile-supermaster-postup >> ${_dstdir}/CBSDfile
+			${SED_CMD} -Ees:%%JNAME%%:"${i}":g \
+			-es:%%ROLE%%:${init_role}:g \
+			-es:%%KEYFILE_PUB%%:"${_keyfile_pub}":g \
+			-es:%%KEYFILE%%:"${_keyfile}":g \
+			-es:%%CLUSTER%%:"${cluster}":g \
+			-es:%%MASTER_NAME%%:"${MASTER_NAME}":g \
+			-es:%%MASTER_VM_RAM%%:"${master_vm_ram}":g \
+			-es:%%MASTER_VM_CPUS%%:"${master_vm_cpus}":g \
+			-es:%%MASTER_VM_IMGSIZE%%:"${master_vm_imgsize}":g \
+			-es:%%MASTER_INTERFACE1%%:"${master_interface1}":g \
+			-es:%%MASTER_INTERFACE2%%:"${master_interface2}":g \
+			-es#%%CI_IP4_ADDR2%%#"${init_master_ips2}"#g \
+			-es#%%CI_GW42%%#"${ci_gw42}"#g \
+			${DIST_MODULE_PATH}/share/upfile/upfile-master >> ${_dstdir}/CBSDfile
+		else
+			${SED_CMD} -Ees:%%JNAME%%:"${i}":g \
+			-es:%%KEYFILE_PUB%%:"${_keyfile_pub}":g \
+			-es:%%KEYFILE%%:"${_keyfile}":g \
+			-es:%%CLUSTER%%:"${cluster}":g \
+			-es:%%MASTER_NAME%%:"${MASTER_NAME}":g \
+			-es:%%MASTER_VM_RAM%%:"${master_vm_ram}":g \
+			-es:%%MASTER_VM_CPUS%%:"${master_vm_cpus}":g \
+			-es:%%MASTER_VM_IMGSIZE%%:"${master_vm_imgsize}":g \
+			-es:%%MASTER_INTERFACE1%%:"${master_interface1}":g \
+			-es:%%MASTER_INTERFACE2%%:"${master_interface2}":g \
+			-es#%%CI_IP4_ADDR2%%#"${init_master_ips2}"#g \
+			-es#%%CI_GW42%%#"${ci_gw42}"#g \
+			-es:%%ROLE%%:master:g \
+			${DIST_MODULE_PATH}/share/upfile/upfile-master >> ${_dstdir}/CBSDfile
+		fi
+		id=$(( id + 1 ))
+	done
+
+	id=1
+	if [ ${gold} -ne 1 ]; then
+		for i in ${worker_list}; do
+			WORKER_NAME="worker${id}"
+			#WORKER_NAME="${i}"
+			${SED_CMD} -Ees:%%JNAME%%:"${i}":g \
+			-es:%%KEYFILE_PUB%%:"${_keyfile_pub}":g \
+			-es:%%KEYFILE%%:"${_keyfile}":g \
+			-es:%%CLUSTER%%:"${cluster}":g \
+			-es:%%WORKER_NAME%%:"${WORKER_NAME}":g \
+			-es:%%WORKER_VM_RAM%%:"${worker_vm_ram}":g \
+			-es:%%WORKER_VM_CPUS%%:"${worker_vm_cpus}":g \
+			-es:%%WORKER_VM_IMGSIZE%%:"${worker_vm_imgsize}":g \
+			-es:%%worker_interfaces%%:"${worker_interfaces}":g \
+			-es:%%ROLE%%:worker:g ${DIST_MODULE_PATH}/share/upfile/upfile-worker >> ${_dstdir}/CBSDfile
+			id=$(( id + 1 ))
+		done
+	fi
+
+	${CAT_CMD} ${DIST_MODULE_PATH}/share/upfile/upfile-postup >> ${_dstdir}/CBSDfile
+	cbsdsqlrw ${_dbpath} "UPDATE k8s SET bhyve_list=\"${master_list} ${worker_list}\" WHERE k8s_name=\"${k8s_name}\""
+
+	${ECHO} "${N1_COLOR}Success. To deploy cluster, please use: ${N2_COLOR}cbsd up${N0_COLOR}"
+	export_k8s_data_for_external_hook
+	external_exec_master_script "${k8s_sys_skel_dir}/init_upfile.d"
+}
+
+### MAIN
+k8s_sys_skel_dir="${MODULE_PATH}/share"
+log_dir="/var/log/k8s"
+[ ! -d "${log_dir}" ] && ${MKDIR_CMD} -p ${log_dir}
+
+[ -n "${oip4_gw}" ] && ip4_gw="${oip4_gw}"
+[ -n "${omaster_interfaces}" ] && master_interfaces="${omaster_interfaces}"
+[ -n "${oworker_interfaces}" ] && worker_interfaces="${oworker_interfaces}"
+
+if [ -z "${ip4_gw}" -o "${ip4_gw}" = "0" ]; then
+	[ -n "${ci_gw4}" ] && ip4_gw="${ci_gw4}"
+fi
+
+iptype ${ip4_gw}
+ret=$?
+case "${ret}" in
+	0)
+		${ECHO} "${N1_COLOR}${CBSD_APP}: Invalid ip4_gw= settings: ${N2_COLOR}${ip4_gw}${N0_COLOR}"
+		${ECHO} "${N1_COLOR}${CBSD_APP}: You can set global ip4_gw via cloud-init settings: ${N2_COLOR}ci_gw=x.x.x.x${N1_COLOR} via ~cbsd/etc/bhyve-default-default.conf${N0_COLOR}"
+		;;
+	1)
+		;;
+	2)
+		err 1 "${N1_COLOR}${CBSD_APP}: IPv6 as ip4_gw not supported yet: ${N2_COLOR}${ip4_gw}${N0_COLOR}"
+		;;
+esac
+
+if [ -n "${init_masters}" ]; then
+	if is_number "${init_masters}"; then
+		err 1 "${N1_COLOR}${CBSD_APP}: init_masters: not a number: ${N2_COLOR}${init_masters}${N0_COLOR}"
+	fi
+	[ ${init_masters} -eq 0 ] && err 1 "${N1_COLOR}${CBSD_APP}: init_masters: there must be at least one master, e.g: ${N2_COLOR}init_masters=1${N0_COLOR}"
+	init_master_ips=
+	for i in $( ${JOT_CMD} ${init_masters} ); do
+		if [ -z "${init_master_ips}" ]; then
+			init_master_ips="DHCP"
+		else
+			init_master_ips="${init_master_ips} DHCP"
+		fi
+	done
+fi
+
+if [ -n "${init_workers}" ]; then
+	if is_number "${init_workers}"; then
+		err 1 "${N1_COLOR}${CBSD_APP}: init_workers: not a number: ${N2_COLOR}${init_workers}${N0_COLOR}"
+	fi
+	if [ ${init_workers} -eq 0 ]; then
+		init_worker_ips=
+	else
+		init_workers_ips=
+		for i in $( ${JOT_CMD} ${init_workers} ); do
+			if [ -z "${init_worker_ips}" ]; then
+				init_worker_ips="DHCP"
+			else
+				init_worker_ips="${init_worker_ips} DHCP"
+			fi
+		done
+	fi
+fi
+
+if [ ! -d ${MODULE_PATH} ]; then
+	${MKDIR_CMD} -m 0770 -p ${MODULE_PATH}
+	${CHOWN_CMD} ${cbsduser}:${cbsduser} ${MODULE_PATH}
+fi
+
+available_properties="k8s_name"
+
+case "${mode}" in
+	init)
+		# determine properties
+		for i in ${available_properties}; do
+			_val=
+			eval _val="\$$i"
+			 [ -z "${_val}" ] && err 1 "${N1_COLOR}${CBSD_APP}: ${N2_COLOR}${i}= ${N1_COLOR}is mandatory${N0_COLOR}"
+		done
+		[ "${pv_enable}" != "0" ] && test_for_pv
+		init_k8s
+
+		[ -n "${orunasap}" ] && runasap=1
+
+		if [ ${runasap} -eq 1 ]; then
+			temp_dir=$( ${MKTEMP_CMD} -d )
+			cd ${temp_dir}
+			init_upfile -d ${temp_dir}
+			cp ${temp_dir}/CBSDfile /tmp
+			cp ${temp_dir}/bootstrap.config /tmp
+			pwd
+			ls -la 
+			# disable env?
+			up cwd=${temp_dir}
+			cd ${CBSD_PWD}
+			# when we use atomic init/up, copy configfile into ~cbsd/var/db/k8s/<k8s>.kubeconfig by default
+			if [ -r ${temp_dir}/config ]; then
+				if [ -n "${server_kubeconfig}" -a "${server_kubeconfig}" != "0" ]; then
+					${SED_CMD} "s# server:.*# server: https://${server_kubeconfig}#g" ${temp_dir}/config > ${MODULE_PATH}/${k8s_name}.kubeconfig
+				else
+					${MV_CMD} ${temp_dir}/config ${MODULE_PATH}/${k8s_name}.kubeconfig
+				fi
+				${CHOWN_CMD} cbsd:cbsd ${MODULE_PATH}/${k8s_name}.kubeconfig
+				${ECHO} "${N1_COLOR}env KUBECONFIG=${N2_COLOR}${MODULE_PATH}/${k8s_name}.kubeconfig${N0_COLOR}"
+			fi
+			${RM_CMD} -rf ${temp_dir}
+			export_k8s_data_for_external_hook
+			external_exec_master_script "${k8s_sys_skel_dir}/postrunasap.d"
+		fi
+		;;
+	list)
+		list_k8s | ${COLUMN_CMD} -t
+		;;
+	shortlist)
+		list_k8s "short"
+		;;
+	init_upfile)
+		[ -z "${k8s_name}" ] && err 1 "${N1_COLOR}${CBSD_APP} ${N2_COLOR}k8s_name= ${N1_COLOR}is mandatory${N0_COLOR}"
+		[ "${pv_enable}" != "0" ] && test_for_pv full
+		init_upfile
+		;;
+	destroy|clean)
+		[ -z "${k8s_name}" ] && err 1 "${N1_COLOR}${CBSD_APP} ${N2_COLOR}k8s_name= ${N1_COLOR}is mandatory${N0_COLOR}"
+		_dbpath="${MODULE_PATH}/${k8s_name}.sqlite"
+		export_k8s_data_for_external_hook
+		bhyve_list=$( cbsdsqlro ${_dbpath} "SELECT bhyve_list FROM k8s WHERE k8s_name=\"${k8s_name}\" LIMIT 1" )
+		if [ -n "${bhyve_list}" ]; then
+			for i in ${bhyve_list}; do
+				if [ "${i}" != "0" ]; then
+					bhyve_exist=$( cbsdsqlro local "SELECT jname FROM bhyve WHERE jname=\"${i}\" LIMIT 1" 2>/dev/null )
+					if [ -n "${bhyve_exist}" ]; then
+						${ECHO} "${N1_COLOR}${CBSD_APP}: destroying ${k8s_name} cluster: destroy vm: ${N2_COLOR}${i}${N0_COLOR}"
+						bremove jname="${i}"
+					fi
+				fi
+			done
+		fi
+		[ ! -r ${_dbpath} ] && err 1 "${N1_COLOR}${CBSD_APP}: no such cluster: ${N2_COLOR}${k8s_name}${N0_COLOR}"
+		for i in ${MODULE_PATH}/${k8s_name}_id_ed25519 ${MODULE_PATH}/${k8s_name}_authorized_keys ${_dbpath} ${_dbpath}-shm ${_dbpath}-wal ${MODULE_PATH}/${k8s_name}.kubeconfig; do
+			[ -r ${i} ] && ${RM_CMD} -f ${i}
+		done
+		external_exec_master_script "${k8s_sys_skel_dir}/destroy.d"
+		${ECHO} "${N1_COLOR}k8s removed: ${N2_COLOR}${k8s_name}${N0_COLOR}"
+		;;
+	*)
+		err 1 "${N1_COLOR}unknown mode: ${N2_COLOR}${mode}${N1_COLOR}, available: ${N2_COLOR}init,destroy,list,init_upfile${N0_COLOR}"
+esac
+
+exit 0

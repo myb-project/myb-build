@@ -51,7 +51,7 @@ pre {
 <body>
 <pre>
     <output id="content">
-    <span id="welcome"></span><span id="platform" style="display: none;"># <a href="https://myb.convectix.com">MyBee</a> - The most simplified API for creating and destroying K8S& cloudVMs</span>
+    <span id="welcome"></span><span id="platform" style="display: none;"># <a href="https://myb.convectix.com">MyBee</a> - The most simplified API for creating and destroying K8S & cloud VMs</span>
     <span id="plans" style="display: none;"># the number of VMs is limited only by your resources. Dashboard: <a target="_blank" href="%%SCHEMA%%://%%IP%%/status">%%SCHEMA%%://%%IP%%/status</a></span>
     <span id="curlimg1" style="display: none;">[you@home ~$]</span><span id="curlimg"></span>
     <span id="othercmd" style="display: none;">

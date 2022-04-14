@@ -1,0 +1,65 @@
+#!/bin/sh
+
+if [ -z "${k8s_name}" ]; then
+	echo "no such k8s_name variable"
+	exit 0
+fi
+
+TARGET_DIR="/k8s/status"
+[ ! -d "${TARGET_DIR}" ] && mkdir -p ${TARGET_DIR}
+TARGET_FILE="${TARGET_DIR}/${k8s_name}"
+[ ! -r ${TARGET_FILE} ] && touch ${TARGET_FILE}
+TEST_DIR=$( realpath ${TARGET_FILE} )
+TEST_DIR=$( dirname ${TEST_DIR} )
+
+[ "${TEST_DIR}" != "${TARGET_DIR}" ] && exit 1
+
+cat > ${TARGET_FILE} <<EOF
+{
+  "hours_left": 0,
+  "status": "subscribed",
+  "created": "${created}",
+  "cluster": "${cluster}",
+  "k8s_ver": "${k8s_ver}",
+  "pv_spec_capacity_storage": ${pv_spec_capacity_storage},
+  "master_vm_ram": "${master_vm_ram}",
+  "master_vm_cpus": ${master_vm_cpus},
+  "master_vm_imgsize": "${master_vm_imgsize}",
+  "worker_vm_ram": "${worker_vm_ram}",
+  "worker_vm_cpus": ${worker_vm_cpus},
+  "worker_vm_imgsize": "${worker_vm_imgsize}",
+  "flannel_mtu": ${flannel_mtu},
+  "bhyve_list": "${bhyve_list}"
+}
+EOF
+
+
+# re-configure nginx
+[ ! -d /usr/local/etc/nginx/upstreams ] && mkdir -p /usr/local/etc/nginx/upstreams
+cat >/usr/local/etc/nginx/upstreams/${k8s_name}.conf <<EOF
+upstream ${k8s_name}_backend {
+	server ${vip}:6443;
+}
+EOF
+
+# maps
+search_str="${server_kubeconfig} ${k8s_name}_backend;"
+
+if ! grep -q "${search_str}" /usr/local/etc/nginx/maps; then
+	cp -a /usr/local/etc/nginx/maps /usr/local/etc/nginx/maps.bak
+	grep -v '}' /usr/local/etc/nginx/maps.bak > /usr/local/etc/nginx/maps
+	echo "	${search_str}" >> /usr/local/etc/nginx/maps
+	echo "}" >> /usr/local/etc/nginx/maps
+fi
+
+# search for default
+search_str="default "
+
+if ! grep -q "${search_str}" /usr/local/etc/nginx/maps; then
+	cp -a /usr/local/etc/nginx/maps /usr/local/etc/nginx/maps.bak
+	grep -v '}' /usr/local/etc/nginx/maps.bak > /usr/local/etc/nginx/maps
+	echo "	default ${k8s_name}_backend;" >> /usr/local/etc/nginx/maps
+	echo "}" >> /usr/local/etc/nginx/maps
+fi
+
+/usr/sbin/service nginx reload

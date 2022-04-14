@@ -1,0 +1,39 @@
+bhyve_%%JNAME%%()
+{
+	vm_ram="%%WORKER_VM_RAM%%"
+	vm_cpus="%%WORKER_VM_CPUS%%"
+	imgsize="%%WORKER_VM_IMGSIZE%%"
+	ip4_addr=$( dhcpd ip4pool="${INIT_WORKER_IPS}" dhcpd_helper=internal )
+	[ -z "${ip4_addr}" ] && err 1 "${W1_COLOR}${CBSD_APP} error: ${N1_COLOR}no free IP for %%JNAME%%, pool ended or address conflict?: ${N2_COLOR}${INIT_MASTER_IPS}${N0_COLOR}"
+	fqdn="%%WORKER_NAME%%.%%CLUSTER%%"
+	ci_jname="${jname}"
+	ci_fqdn="${fqdn}"
+	ci_ip4_addr="${ip4_addr}"
+	interface="%%WORKER_INTERFACE%%"
+}
+postcreate_%%JNAME%%()
+{
+	rm -f /tmp/prepare_master-${jname}.log
+	bscp %%KEYFILE_PUB%% ${jname}:authorized_keys
+	bscp %%KEYFILE%% ${jname}:id_ed25519
+	bscp bootstrap.config ${jname}:bootstrap.config
+
+	if [ "${DEVELOP}" = "1" ]; then
+		# development only
+
+		# development only
+
+		bscp /root/modules-k8s/kubernetes.tgz ${jname}:kubernetes.tgz
+		bscp /root/modules-k8s/puppet.tgz ${jname}:puppet.tgz
+
+		bexec <<EOF
+sudo [ -d /home/ubuntu/kubernetes ] && rm -rf /home/ubuntu/kubernetes || true
+sudo [ -d /home/ubuntu/puppet ] && rm -rf /home/ubuntu/puppet || true
+sudo tar xfzv kubernetes.tgz
+sudo tar xfzv puppet.tgz
+sudo mkdir -p /etc/puppetlabs/puppet || true
+sudo rsync -avz /home/ubuntu/puppet/ /etc/puppetlabs/puppet/
+EOF
+	fi
+	bexec sudo /home/ubuntu/kubernetes/prepare_master.sh worker | tee -a /tmp/prepare_master-${jname}.log
+}

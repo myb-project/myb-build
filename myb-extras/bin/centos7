@@ -2,4 +2,5 @@
 
 profile="vm-linux-cloud-CentOS-7-x86_64.conf"
 cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
-exec /root/bin/checkiso.sh
+/root/bin/checkiso.sh check
+exit 0

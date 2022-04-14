@@ -1,0 +1,50 @@
+#!/usr/local/bin/cbsd
+#v12.2.2
+DIST_MODULE_PATH="${distmoduledir}/k8s.d"
+. ${DIST_MODULE_PATH}/share/k8s.conf
+OPTARGS="${MYCOL} init_masters init_workers"
+MYARG="mode"
+#MYOPTARG="display header active human k8s_name dryrun checkip develop runasap header email"
+MYOPTARG="display header active human k8s_name dryrun checkip develop runasap header worker_vm_ram master_vm_ram master_vm_cpus master_vm_imgsize email callback init_masters init_workers worker_vm_cpus worker_vm_imgsize pv_enable pubkey"
+MYDESC="Operate with K8S cluster"
+CBSDMODULE="sys"
+ADDHELP="
+
+An example of a more capacious environment preparation for running a kubernetes cluster.
+
+"
+
+EXTHELP="wf_k8s"
+MODULE_PATH="${dbdir}/k8s"
+DIST_MODULE_PATH="${distmoduledir}/k8s.d"
+
+. ${subr}
+. ${cbsdinit}
+
+current_num=$( /usr/local/bin/sqlite3 /usr/jails/var/db/k8s/k8world.sqlite 'SELECT COUNT(id) FROM k8world;' | ${AWK_CMD} '{printf $1}' )
+
+new_num=$(( current_num + 1 ))
+
+echo "${new_num}" > /var/db/cbsd-k8s/queue
+
+echo "Inc queue [$*]" >> /tmp/k8s-lockf.log
+# 10m full timeout
+
+for i in ${MYARG} ${MYOPTARG}; do
+	T=
+	eval T="\$$i"
+
+	if [ "${i}" = "pubkey" ]; then
+		echo "T [${T}]"
+	fi
+
+	[ -z "${T}" ] && continue
+	if [ -n "${str}" ]; then
+		str="${str} ${i}=\"${T}\""
+	else
+		str="${i}=\"${T}\""
+	fi
+done
+
+echo "/usr/local/bin/cbsd k8world ${str}" >> /tmp/k8hetzner.sh.$$
+/usr/bin/lockf -s -t600 /tmp/k8sworld.lock /bin/sh /tmp/k8hetzner.sh.$$

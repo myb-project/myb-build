@@ -1,0 +1,43 @@
+# global preup function
+preup()
+{
+	local _res
+
+	_res=$( which kubectl )
+	[ ! -x "${_res}" ] && err 1 "${N1_COLOR}${CBSD_UP}: no such kubectl, please install first: ${N2_COLOR}pkg install -y sysutils/kubectl${N0_COLOR}"
+
+	if [ "${DEVELOP}" = "1" ]; then
+		[ ! -d /root/modules-k8s ] && err 1 "no such /root/modules-k8s"
+		cd /root/modules-k8s
+		rm -f kubernetes.tgz puppet.tgz
+		tar cfz kubernetes.tgz kubernetes
+		tar cfz puppet.tgz puppet
+	fi
+
+	cd /usr/local/cbsd/modules/k8s.d/
+	cd ${myworkdir}
+	local _clean_ip
+
+	# dhcpd cleanip list
+	_clean_ip="${INIT_WORKER_IPS} ${INIT_MASTER_IPS} ${VIP}"
+
+	# cleanup in parallel
+	dhcpd cleanup="${_clean_ip}" dhcpd_helper=internal > /dev/null 2>&1 &
+
+	# configure PV
+	if [ "${PV_ENABLE}" != "0" ]; then
+		${ECHO} "${N1_COLOR}  * re-configure PV${N0_COLOR}"
+
+		# in parallel (todo: unit/regression test in post:
+		echo "/usr/sbin/daemon -o /var/log/k8s-pv-enable-${VIP}.log /usr/local/cbsd/modules/k8s.d/scripts/pv-create-daemon.sh -a \"${ZFS_K8S_PV_CLUSTER}\" -b \"${ZFS_K8S_PV_CLUSTER_MNT}\" -c \"${PV_ENABLE}\" -d /var/log/k8s/pv-create.log -e ${PV_SPEC_SERVER} -f \"${INIT_MASTER_IPS} ${INIT_WORKER_IPS}\" -g ${PV_SPEC_NFS_PATH} -h ${ZFS_K8S_PV_ROOT_MNT}"
+		/usr/sbin/daemon -o /var/log/k8s-pv-enable-${VIP}.log /usr/local/cbsd/modules/k8s.d/scripts/pv-create-daemon.sh \
+		-a "${ZFS_K8S_PV_CLUSTER}" -b "${ZFS_K8S_PV_CLUSTER_MNT}" -c "${PV_ENABLE}" -d /var/log/k8s/pv-create.log \
+		-e ${PV_SPEC_SERVER} \
+		-f "${INIT_MASTER_IPS} ${INIT_WORKER_IPS}" -g ${PV_SPEC_NFS_PATH} -h ${ZFS_K8S_PV_ROOT_MNT}
+
+		# seq:
+		#/usr/local/cbsd/modules/k8s.d/scripts/pv-create.sh -d "${ZFS_K8S_PV_CLUSTER}" -p "${ZFS_K8S_PV_CLUSTER_MNT}" -z "${PV_ENABKE}" -l /var/log/k8s/pv-create.log
+		#/usr/local/cbsd/modules/k8s.d/scripts/nfs-enable.sh -h ${PV_SPEC_SERVER}
+		#/usr/local/cbsd/modules/k8s.d/scripts/exports-modify.sh -h "${INIT_MASTER_IPS} ${INIT_WORKER_IPS}" -p ${PV_SPEC_NFS_PATH} -r ${ZFS_K8S_PV_ROOT_MNT}
+	fi
+}
