@@ -1,7 +1,7 @@
 # List of the allowed cbsd commands
 SECCMD="\
 ${SECCMD}
-config_smtp \
 myb_ip_whitelist \
 myb_pub_whitelist \
+myb_net_profile \
 "

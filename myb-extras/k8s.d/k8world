@@ -217,6 +217,10 @@ case "${mode}" in
 			ext_ip="${nodeip}"
 		fi
 
+		# rc.conf
+		${SYSRC_CMD} -qf /etc/rc.conf cloned_interfaces+="${int_bridge_name}"
+		${SYSRC_CMD} -qf /etc/rc.conf ifconfig_${int_bridge_name}="${int_br_ip}/24 up description k8s-${MYID}-int"
+
 		${IFCONFIG_CMD} ${int_bridge_name} create description k8s-${MYID}-int
 		${IFCONFIG_CMD} ${int_bridge_name} ${int_br_ip}/24 up
 
@@ -224,7 +228,12 @@ case "${mode}" in
 			${IFCONFIG_CMD} ${ext_bridge_name} create description k8s-${MYID}-ext
 			${IFCONFIG_CMD} ${ext_bridge_name} inet6 ${ext_br_ip}/64 up
 
+			# rc.conf
+			${SYSRC_CMD} -qf /etc/rc.conf cloned_interfaces+="${ext_bridge_name}"
+			${SYSRC_CMD} -qf /etc/rc.conf ifconfig_${ext_bridge_name}="inet6 ${ext_br_ip}/64 up description k8s-${MYID}-ext"
+
 			# to post/pre hooks + destroy
+			# todo: route flags in CBSD 13.1.0+
 			${ROUTE_CMD} -6 add ${ext_ip} -interface ${ext_bridge_name}
 			${ROUTE_CMD} -6 add ${ext_ip2} -interface ${ext_bridge_name}
 		fi
@@ -367,6 +376,34 @@ EOF
 		[ -n "${api_postcreate_hook}" -a -x "${api_postcreate_hook}" ] && ${api_postcreate_hook} -c ${cid} -j ${k8s_name} -m create -r ${cbsd_api_dbdir}
 
 		[ "${K8S_MK_JAIL}" = "1" ] && mkjail
+
+		# save route
+
+
+		if [ "${multi_nic}" = "1" ]; then
+
+			cluster_db="${MODULE_PATH}/${k8s_name}.sqlite"
+
+			# SINGLE VM support only:
+			bhyve_list=$( cbsdsqlro ${cluster_db} "SELECT bhyve_list FROM k8s WHERE k8s_name=\"${k8s_name}\" LIMIT 1" | ${AWK_CMD} '{printf $1}' )
+
+			if [ -n "${bhyve_list}" -a "${bhyve_list}" != "0" ]; then
+				# SINGLE VM support only
+				${RM_CMD} -f /usr/jails/vm/${bhyve_list}/master_poststop.d/route_del.sh || true
+				${RM_CMD} -f /usr/jails/vm/${bhyve_list}/master_poststart.d/route_add.sh || true
+
+				# route add
+				echo "${ROUTE_CMD} -6 add ${ext_ip} -interface ${ext_bridge_name}" > /usr/jails/vm/${bhyve_list}/master_poststart.d/route_add.sh
+				echo "${ROUTE_CMD} -6 add ${ext_ip2} -interface ${ext_bridge_name}" >> /usr/jails/vm/${bhyve_list}/master_poststart.d/route_add.sh
+				${CHMOD_CMD} +x /usr/jails/vm/${bhyve_list}/master_poststart.d/route_add.sh
+
+				# route del
+				echo "${ROUTE_CMD} -6 delete ${ext_ip} -interface ${ext_bridge_name}" > /usr/jails/vm/${bhyve_list}/master_poststop.d/route_del.sh
+				echo "${ROUTE_CMD} -6 delete ${ext_ip2} -interface ${ext_bridge_name}" >> /usr/jails/vm/${bhyve_list}/master_poststop.d/route_del.sh
+				${CHMOD_CMD} +x /usr/jails/vm/${bhyve_list}/master_poststop.d/route_del.sh
+			fi
+		fi
+
 		;;
 	list)
 		list_k8world | ${COLUMN_CMD} -t
@@ -427,7 +464,12 @@ EOF
 
 		for i in ${int_bridge_name} ${ext_bridge_name}; do
 			${IFCONFIG_CMD} ${i} > /dev/null 2>&1
-			[ $? -eq 0 ] && ${IFCONFIG_CMD} ${i} destroy > /dev/null 2>&1
+			[ $? -ne 0 ] && continue
+			${IFCONFIG_CMD} ${i} destroy > /dev/null 2>&1
+
+			# rc.conf
+			${SYSRC_CMD} -qf /etc/rc.conf cloned_interfaces-="${i}"
+			${SYSRC_CMD} -qf /etc/rc.conf ifconfig_${i}=""
 		done
 
 		# extra cleanup for ifaces?

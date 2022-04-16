@@ -1,0 +1,174 @@
+#!/usr/local/bin/cbsd
+MYARG=
+MYOPTARG=
+MYDESC="Manage MYB network profiles"
+CBSDMODULE="myb"
+ADDHELP="
+
+${H3_COLOR}Description${N0_COLOR}:
+
+Manage MyB network behaviour
+
+"
+EXTHELP=
+
+. ${subrdir}/tools.subr
+. ${subrdir}/cbsdinit.subr
+. ${subrdir}/system.subr
+
+b=$( border )
+j=$( jorder )
+active=0
+
+if [ -n "${b}" ]; then
+	bn=$( echo ${b} | ${WC_CMD} -w | ${AWK_CMD} '{printf $1}' )
+	active=1
+else
+	bn=0
+fi
+if [ -n "${j}" ]; then
+	jn=$( echo ${j} | ${WC_CMD} -w | ${AWK_CMD} '{printf $1}' )
+	active=1
+else
+	jn=0
+fi
+
+if [ ${active} -eq 1 ]; then
+	${ECHO} "${W1_COLOR}You can't change MyB network profile while you have environments:${N0_COLOR}"
+	echo
+	[ ${jn} -ne 0 ] && ${ECHO} "${N1_COLOR}Current jails num: ${jn} - ${N2_COLOR}${j}${N0_COLOR}"
+	[ ${bn} -ne 0 ] && ${ECHO} "${N1_COLOR}Current VMs num: ${bn} - ${N2_COLOR}${b}${N0_COLOR}"
+	echo
+	echo "Please destroy environments before reconfiguring network profiles."
+	read p
+	exit 0
+fi
+
+. /etc/rc.conf
+[ -z "${myb_net_cur_profile}" ] && myb_net_cur_profile="1"
+
+case "${myb_net_cur_profile}" in
+	1)
+		profile1_sign="*"
+		profile2_sign=" "
+		;;
+	2)
+		profile1_sign=" "
+		profile2_sign="*"
+		;;
+esac
+
+new_profile=
+profile2_available=1
+
+if [ "${nodeip6}" = "0" -o "${nodeip6}" = "(null)" ]; then
+	profile2_available=0
+else
+	iptype ${nodeip6}
+	ret=$?
+	if [ ${ret} -ne 2 ]; then
+		${ECHO} "${W1_COLOR}Warning: Not valid IPv6 address: ${N2_COLOR}${nodeip6}${N0_COLOR}"
+		${ECHO} "${N1_COLOR}Please ADD IPv6 first via '${H3_COLOR}1) (Re)Configure Host Network${N4_COLOR}'"
+		profile2_available=0
+	fi
+fi
+
+profile1_color="${N2_COLOR}"
+profile1_desc="private networking + auto expose for RDP/SSH"
+
+if [ ${profile2_available} -eq 1 ]; then
+	profile2_color="${N2_COLOR}"
+	profile2_desc="same as profile1 + external IPv6 for second NIC"
+else
+	profile2_color="${N4_COLOR}"
+	profile2_desc="same as profile1 + external IPv6 for second NIC. Please add IPv6 first via '1) (Re)Configure Host Network'"
+	profile2_desc2="Please ADD IPv6 first via '${H3_COLOR}1) (Re)Configure Host Network${N4_COLOR}'"
+fi
+
+old_profile="${myb_net_cur_profile}"
+
+while [ true ]; do
+echo
+${ECHO} "${H2_COLOR}MyB Network Profiles${N0_COLOR}"
+${ECHO} "${H2_COLOR}--------------------${N0_COLOR}"
+echo
+
+
+${ECHO} "${profile1_color} ${profile1_sign} 1) Single External IPv4 (${profile1_desc}).${N0_COLOR}"
+${ECHO} "${profile2_color} ${profile2_sign} 2) Multi-NIC IPv4 private / IPv6 (${profile2_desc})${N0_COLOR}"
+
+echo
+	read p
+
+	if [ -z "${p}" ]; then
+		new_profile="${myb_net_cur_profile}"
+		break
+	fi
+
+	case "${p}" in
+		1)
+			myb_net_cur_profile=1
+			profile1_sign="*"
+			profile2_sign=" "
+			;;
+		2)
+			if [ ${profile2_available} -eq 1 ]; then
+				myb_net_cur_profile=2
+				profile1_sign=" "
+				profile2_sign="*"
+			else
+				${ECHO} "${W1_COLOR}Profile not available: ${N4_COLOR}${profile2_desc2}${N0_COLOR}"
+				read p
+			fi
+			;;
+		*)
+			;;
+	esac
+
+done
+
+if [ "${new_profile}" = "${old_profile}" ]; then
+	echo "unchanged, exist"
+	exit 0
+fi
+
+echo "Reconfiguring MyBee network profile [ ${old_profile} -> ${new_profile} ]..."
+
+case "${new_profile}" in
+	1)
+		${SYSRC_CMD} -qf /usr/jails/etc/bhyve-default-default.conf ci_interface2="" ci_gw42="" > /dev/null 2>&1
+		${IFCONFIG_CMD} bridge200 > /dev/null 2>&1
+		ret=$?
+		if [ ${ret} -eq 0 ]; then
+			${IFCONFIG_CMD} bridge200 destroy > /dev/null 2>&1
+		fi
+		${SYSRC_CMD} -qf /etc/rc.conf cloned_interfaces-="bridge200" ifconfig_bridge200="" > /dev/null 2>&1
+
+		# k8s
+		[ ! -f /usr/jails/etc/k8world.conf ] && ${TOUCH_CMD} /usr/jails/etc/k8world.conf
+		${SYSRC_CMD} -qf /usr/jails/etc/k8world.conf multi_nic="0" > /dev/null 2>&1
+		;;
+	2)
+		gw42=$( dhcpdv6 )
+
+		# IPTYPE
+
+		${SYSRC_CMD} -qf /usr/jails/etc/bhyve-default-default.conf ci_interface2="bridge200" ci_gw42="${gw42}" > /dev/null 2>&1
+		${IFCONFIG_CMD} bridge200 > /dev/null 2>&1
+		ret=$?
+		if [ ${ret} -eq 0 ]; then
+			${IFCONFIG_CMD} bridge200 destroy > /dev/null 2>&1
+		fi
+		${SYSRC_CMD} -qf /etc/rc.conf cloned_interfaces+="bridge200" ifconfig_bridge200="inet6 ${gw42}/64 up" > /dev/null 2>&1
+		${IFCONFIG_CMD} bridge200 create > /dev/null 2>&1
+		${IFCONFIG_CMD} bridge200 inet6 ${gw42}/64 up > /dev/null 2>&1
+		[ ! -f /usr/jails/etc/k8world.conf ] && ${TOUCH_CMD} /usr/jails/etc/k8world.conf
+		${SYSRC_CMD} -qf /usr/jails/etc/k8world.conf multi_nic="1" > /dev/null 2>&1
+		;;
+esac
+
+${SYSRC_CMD} -qf /etc/rc.conf myb_net_cur_profile="${new_profile}" 2>/dev/null 2>&1
+echo "DONE"
+read p
+
+exit 0

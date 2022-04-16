@@ -41,13 +41,16 @@ if [ -z "${auto_iface}" ]; then
 				;;
 			*)
 				auto_iface="${i}"
+				break
 				;;
 		esac
 	done
-
 fi
 
 ip4_addr=$( ifconfig ${auto_iface} 2>/dev/null | /usr/bin/awk '/inet [0-9]+/ { print $2}' | /usr/bin/head -n 1 )
+
+## when no IP?
+[ -z "${ip4_addr}" ] && ip4_addr="10.0.100.1"
 
 echo "CBSD setup"
 
@@ -75,13 +78,17 @@ statsd_jail_enable="0"
 statsd_hoster_enable="0"
 EOF
 
+cp -a /tmp/initenv.conf /root
+
 echo "SETUP CBSD"
 export NOINTER=1
 export workdir=/usr/jails
-/usr/local/cbsd/sudoexec/initenv /tmp/initenv.conf
+
+/usr/local/cbsd/sudoexec/initenv /tmp/initenv.conf >> /var/log/cbsd_init.log 2>&1
 
 #  sshd_flags="-oUseDNS=no -oPermitRootLogin=without-password -oPort=22" \
 sysrc \
+ netwait_enable="YES" \
  nginx_enable="YES" \
  cbsdd_enable="YES" \
  clear_tmp_enable="YES" \
@@ -94,7 +101,6 @@ sysrc \
  cbsd_mq_router_enable="YES" \
  cbsd_mq_api_enable="YES" \
  sshd_enable="YES" \
- sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" \
  syslogd_enable="NO" \
  sendmail_enable="NO" \
  sendmail_submit_enable="NO" \
@@ -102,6 +108,19 @@ sysrc \
  sendmail_msp_queue_enable="NO" \
  cloned_interfaces="bridge100" \
  ifconfig_bridge100="inet 10.0.100.1/24 up"
+
+
+# depending on the presence of an unprivileged extra user,
+# we allow or deny remote login for root
+# For FreeBSD 13.1-RELEASE we have 29 users + 'cbsd' = 30
+users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
+if [ "${users_num}" != "30" ]; then
+	echo "extra users exist, disable SSH root login by default"
+	sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=no -oPort=22" > /dev/null 2>&1
+else
+	echo "extra users does not exist, enable SSH root login by default"
+	sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" > /dev/null 2>&1
+fi
 
 cat > /etc/sysctl.conf <<EOF
 security.bsd.see_other_uids = 0
@@ -337,6 +356,8 @@ chown -R cbsd:cbsd /var/db/cbsd-k8s /usr/jails/var/db
 # hooks/status update
 ln -sf /root/bin/update_cluster_status.sh /usr/jails/share/bhyve-system-default/master_poststop.d/update_cluster_status.sh
 ln -sf /root/bin/update_cluster_status.sh /usr/jails/share/bhyve-system-default/master_poststart.d/update_cluster_status.sh
+ln -sf /root/bin/route_del.sh /usr/jails/share/bhyve-system-default/master_poststop.d/route_del.sh
+ln -sf /root/bin/route_add.sh /usr/jails/share/bhyve-system-default/master_poststart.d/route_add.sh
 
 /usr/bin/wall <<EOF
   MyBee cluster setup complete, reboot host!

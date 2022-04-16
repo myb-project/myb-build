@@ -18,6 +18,49 @@ trap : 4
 # Make sure the user can't access rootshell by pressing Ctrl-Z
 trap : 18
 
+MYTTY=$( tty )
+
+MYIP=$( /usr/bin/w -h -n | while read _user _tty _ip _x; do
+	_tty="/dev/${_tty}"
+	if [ "${_tty}" = "${MYTTY}" ]; then
+		echo "${_ip}"
+		exit 0
+	fi
+done )
+
+[ -n "${MYIP}" ] && export MYIP="${MYIP}"
+
+check_sshflags()
+{
+	local _i
+
+	for _i in ${sshd_flags}; do
+		p1=${_i%%=*}
+		p2=${_i##*=}
+		[ "${p1}" != "-oPermitRootLogin" ] && continue
+		[ "${p2}" = "yes" ] && return 0
+	done
+
+	return 1
+}
+
+change_sshflags()
+{
+	case "${myb_ssh_root_ssh}" in
+		[Ee][Nn]*)
+			${SYSRC_CMD} -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=no -oPort=22" > /dev/null 2>&1
+			;;
+		[Dd][Ii]*)
+			${SYSRC_CMD} -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" > /dev/null 2>&1
+			;;
+		*)
+			return 0
+			;;
+	esac
+
+	${SERVICE_CMD} sshd restart
+}
+
 # Set our operating platform
 PLATFORM="MyBee"
 # ${myb_version}
@@ -41,6 +84,12 @@ while : ; do
 	[ -r /tmp/stop ] && exit 0
 	# re-read ACL on/off, net profile
 	. /etc/rc.conf
+
+	if check_sshflags; then
+		myb_ssh_root_ssh="Enabled "
+	else
+		myb_ssh_root_ssh="Disabled"
+	fi
 
 	[ -r ${MYB_SMTP_CONFIG_FILE} ] && . ${MYB_SMTP_CONFIG_FILE}
 
@@ -116,15 +165,16 @@ while : ; do
 	echo
 	echo "Console Menu"
 	echo "------------"
-	echo -e "${H2_COLOR}1) (Re)Configure Host Network${NORMAL}     ${H2_COLOR}10) Configure Hosts Allow for API ${IP_WL_COLOR}(${IP_WL})${NORMAL}"
-	echo -e "${H2_COLOR}2) Reset 'root' user password${NORMAL}     ${H2_COLOR}11) Configure Pubkey WhiteList ${PUB_WL_COLOR}(${PUB_WL})${NORMAL}"
-	echo -e "${VPN_COLOR}3) Configure VPN access for API${NORMAL}   ${DGRAY}12) Add cluster node${NORMAL}"
-	echo -e "${H2_COLOR}4) Change VM network profile (${myb_net_cur_profile})${NORMAL}  ${H2_COLOR}13) Console Keyboard Map${NORMAL}"
-	echo -e "${TEMPLATE_COLOR}5) Install container template${NORMAL}     ${DGRAY}14) NFS/PVC/P9FS shares for VM${NORMAL}"
-	echo -e "${H2_COLOR}6) Shell ( warm cloud image )${NORMAL}     ${DGRAY}15) Set API FQDN ( + certbot )${NORMAL}"
-	echo -e "${H2_COLOR}7) Reboot Server${NORMAL}                  ${DGRAY}16) Kubernetes cluster${NORMAL}"
-	echo -e "${H2_COLOR}8) Shutdown Server${NORMAL}                ${H2_COLOR}17) Turn ON/OFF Hosts Allow ACL${NORMAL}"
-	echo -e "${H2_COLOR}9) Configure SMTP${NORMAL} (${SMTP_COLOR}${SMTP_STATUS}${NORMAL})  ${H2_COLOR}18) Turn ON/OFF Pubkey Whitelist ACL ACL${NORMAL}"
+	echo -e "${H2_COLOR}1) (Re)Configure Host Network${NORMAL}     ${H2_COLOR}11) Configure Hosts Allow for API ${IP_WL_COLOR}(${IP_WL})${NORMAL}"
+	echo -e "${H2_COLOR}2) Reset 'root' user password${NORMAL}     ${H2_COLOR}12) Configure Pubkey WhiteList ${PUB_WL_COLOR}(${PUB_WL})${NORMAL}"
+	echo -e "${VPN_COLOR}3) Configure VPN access for API${NORMAL}   ${DGRAY}13) Add cluster node${NORMAL}"
+	echo -e "${H2_COLOR}4) Change VM network profile (${myb_net_cur_profile})${NORMAL}  ${H2_COLOR}14) Console Keyboard Map${NORMAL}"
+	echo -e "${TEMPLATE_COLOR}5) Install container template${NORMAL}     ${DGRAY}15) NFS/PVC/P9FS shares for VM${NORMAL}"
+	echo -e "${H2_COLOR}6) Shell ( warm cloud image )${NORMAL}     ${DGRAY}16) Set API FQDN ( + certbot )${NORMAL}"
+	echo -e "${H2_COLOR}7) Reboot Server${NORMAL}                  ${DGRAY}17) Kubernetes clusters setting${NORMAL}"
+	echo -e "${H2_COLOR}8) Shutdown Server${NORMAL}                ${DGRAY}18) ${NORMAL}"
+	echo -e "${H2_COLOR}9) Configure SMTP${NORMAL} (${SMTP_COLOR}${SMTP_STATUS}${NORMAL})  ${DGRAY}19) ${NORMAL}"
+	echo -e "${H2_COLOR}10) SSH root user: ${myb_ssh_root_ssh}${NORMAL}       ${DGRAY}20) Add cluster node${NORMAL}"
 	echo
 	echo -e "${H2_COLOR}0) Exit${NORMAL}"
 	echo
@@ -182,31 +232,39 @@ while : ; do
 			/usr/local/bin/cbsd config_smtp
 			;;
 		10)
+			change_sshflags
+			;;
+		11)
+			_editfile=1		# always edit file
 			case ${IP_WL} in
 				enabled)
 					if getyesno "Turn ACL OFF? ('n' or '0' - leave as enabled) "; then
 						IP_WL="disabled"
 						${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+						_editfile=0
+						cbsd myb_ip_whitelist mode=off
 					fi
 					;;
 				disabled)
 					if getyesno "Turn ACL ON? ('n' or '0' - leave as disabled) "; then
 						IP_WL="enabled"
 						${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
-						cbsd myb_ip_whitelist
 					fi
 					;;
 			esac
-			echo "press key"
-			read p
+			if [ "${_editfile}" = "1" ]; then
+				cbsd myb_ip_whitelist
+			fi
 		;;
-		11)
+		12)
+			_editfile=1		# always edit file
 			case ${PUB_WL} in
 				enabled)
 					if getyesno "Turn Pubkey ACL OFF? ('n' or '0' - leave as enabled) "; then
 						PUB_WL="disabled"
 						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
 						${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531" > /dev/null 2>&1
+						_editfile=0
 						${SERVICE_CMD} cbsd-mq-api restart
 					fi
 					;;
@@ -216,18 +274,18 @@ while : ; do
 						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
 						${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531 -allowlist /usr/local/etc/cbsd-mq-api.allow" > /dev/null 2>&1
 						${SERVICE_CMD} cbsd-mq-api restart
-						cbsd myb_pub_whitelist
 					fi
 					;;
 			esac
-			echo "press key"
-			read p
+			if [ "${_editfile}" = "1" ]; then
+				cbsd myb_pub_whitelist
+			fi
 			;;
-		12)
+		13)
 			echo "not implemented yet"
 			read p
 			;;
-		13)
+		14)
 			/usr/sbin/kbdmap
 			;;
 		*)
