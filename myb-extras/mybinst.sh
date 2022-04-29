@@ -255,10 +255,20 @@ ZFS_K8S_MNT="/k8s"
 api_env_name="env"
 server_list="${tube_name}"
 PV_SPEC_SERVER="10.0.100.1"
-multi_nic="0"
+
+ZPOOL="zroot"
+ZFS_K8S="\${ZPOOL}/k8s"
+ZFS_K8S_MNT="/k8s"
+ZFS_K8S_PV_ROOT="\${ZFS_K8S}/pv"                         # zpool root PV
+ZFS_K8S_PV_ROOT_MNT="\${ZFS_K8S_MNT}/pv"                 # zpool mnt root PV
+
 EOF
 
-chown cbsd:cbsd ~cbsd/etc/api.conf ~cbsd/etc/k8s.conf
+cat > /usr/jails/etc/k8world.conf <<EOF
+K8S_MK_JAIL="1"
+EOF
+
+chown cbsd:cbsd ~cbsd/etc/api.conf ~cbsd/etc/k8s.conf /usr/jails/etc/k8world.conf
 mkdir -p /var/db/cbsd-api /usr/jails/var/db/api/map
 chown -R cbsd:cbsd /var/db/cbsd-api /usr/jails/var/db/api/map
 
@@ -358,6 +368,13 @@ ln -sf /root/bin/update_cluster_status.sh /usr/jails/share/bhyve-system-default/
 ln -sf /root/bin/update_cluster_status.sh /usr/jails/share/bhyve-system-default/master_poststart.d/update_cluster_status.sh
 ln -sf /root/bin/route_del.sh /usr/jails/share/bhyve-system-default/master_poststop.d/route_del.sh
 ln -sf /root/bin/route_add.sh /usr/jails/share/bhyve-system-default/master_poststart.d/route_add.sh
+
+/usr/local/bin/cbsd jimport /cbsd/micro1.img
+rm -f /cbsd/micro1.img
+
+/usr/local/cbsd/sudoexec/initenv > /var/log/cbsd_init2.log 2>&1
+
+/usr/local/cbsd/modules/k8s.d/scripts/install.sh up > /dev/null 2>&1
 
 /usr/bin/wall <<EOF
   MyBee cluster setup complete, reboot host!

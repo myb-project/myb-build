@@ -24,6 +24,7 @@ cd ${progdir}
 #rm -f cbsd/go-*.txz
 rsync -avz ${progdir}/myb-extras/ ${progdir}/cbsd/
 rsync -avz ${progdir}/jail-skel/ ${workdir}/jails-data/${jname}/
+cp -a /usr/jails/export/micro1.img ${progdir}/cbsd/
 
 [ -d ${progdir}/cbsd/jail-skel ] && rm -rf ${progdir}/cbsd/jail-skel
 cp -a ${progdir}/jail-skel ${progdir}/cbsd/

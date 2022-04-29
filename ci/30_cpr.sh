@@ -20,8 +20,8 @@ if [ -d ${progdir}/cbsd ]; then
 fi
 
 mkdir -p ${progdir}/cbsd
-echo "Sleep"
-read p
+#echo "Sleep: mv ${dstdir}/* ${progdir}/cbsd/"
+#read p
 
 mv ${dstdir}/* ${progdir}/cbsd/
 

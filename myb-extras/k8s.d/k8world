@@ -72,7 +72,7 @@ mkjail()
 #		sysrc="sshd_enable=YES sshd_flags='-oUseDNS=no -oPermitRootLogin=without-password' cron_enable='NO' syslogd_enable='NO'"
 
 	${CAT_CMD} > /usr/jails/jails-fstab/${myjail}/fstab.local <<EOF
-/k8s/pv/${k8s_name} /usr/home/fcp/pv nullfs rw 0 0
+/k8s/pv/${k8s_name} /home/fcp/pv nullfs rw 0 0
 EOF
 
 	${ZFS_CMD} set quota=200m zroot/ROOT/default/${myjail}
@@ -85,12 +85,12 @@ EOF
 #user_shell_fcp='/bin/csh'
 
 	# todo: hardcode -> config file + $workdir
-	mkdir -m 0700 -p /usr/jails/jails-data/${myjail}-data/usr/home/fcp/.ssh /usr/jails/jails-data/${myjail}-data/usr/home/fcp/.kube
-	chmod 0700 /usr/jails/jails-data/${myjail}-data/usr/home/fcp /usr/jails/jails-data/${myjail}-data/usr/home/fcp/.ssh
-	echo "${pubkey}" > /usr/jails/jails-data/${myjail}-data/usr/home/fcp/.ssh/authorized_keys
-	chmod 0400 /usr/jails/jails-data/${myjail}-data/usr/home/fcp/.ssh/authorized_keys
+	${MKDIR_CMD} -m 0700 -p /usr/jails/jails-data/${myjail}-data/home/fcp/.ssh /usr/jails/jails-data/${myjail}-data/home/fcp/.kube
+	${CHMOD_CMD} 0700 /usr/jails/jails-data/${myjail}-data/home/fcp /usr/jails/jails-data/${myjail}-data/home/fcp/.ssh
+	echo "${pubkey}" > /usr/jails/jails-data/${myjail}-data/home/fcp/.ssh/authorized_keys
+	${CHMOD_CMD} 0400 /usr/jails/jails-data/${myjail}-data/home/fcp/.ssh/authorized_keys
 
-	${CAT_CMD} > /usr/jails/jails-data/${myjail}-data/usr/home/fcp/.login <<EOF
+	${CAT_CMD} > /usr/jails/jails-data/${myjail}-data/home/fcp/.login <<EOF
 if ( -x /usr/bin/resizewin ) /usr/bin/resizewin -z
 echo "cluster-info:"
 /usr/local/bin/kubectl cluster-info
@@ -101,9 +101,14 @@ echo "get pv:"
 echo
 echo "Type 'k9s' to rub K9S"
 EOF
-	cp -a /usr/jails/var/db/k8s/${k8s_name}.kubeconfig /usr/jails/jails-data/${myjail}-data/usr/home/fcp/.kube/config
+	${CP_CMD} -a /usr/jails/var/db/k8s/${k8s_name}.kubeconfig /usr/jails/jails-data/${myjail}-data/home/fcp/.kube/config
 
-	chown -R 1001:1001 /usr/jails/jails-data/${myjail}-data/usr/home/fcp
+/usr/sbin/chroot /usr/jails/jails-data/${myjail}-data /bin/sh <<EOF
+/usr/sbin/chown -R fcp:fcp /home/fcp
+EOF
+
+	${MKDIR_CMD} -m 0777 /usr/jails/jails-data/${myjail}-data/tmp
+	${CHMOD_CMD} u+t /usr/jails/jails-data/${myjail}-data/tmp
 
 	echo "expose jname=${myjail} in=${ssh_console_port} out=22 outaddr=${int_br_ip} mode=add"
 	expose jname=${myjail} in=${ssh_console_port} out=22 mode=add outaddr=${int_br_ip}

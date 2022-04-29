@@ -2,20 +2,25 @@
   "images": [
     "centos7",
     "centos8",
+    "centos9",
     "debian10",
     "debian11",
+    "dflybsd6",
     "freebsd13_ufs",
     "freebsd13_zfs",
     "freebsd14_ufs",
     "freebsd14_zfs",
+    "freepbx",
+    "homeass",
     "jail",
-    "kubernetes",
+    "k8s",
     "netbsd9",
     "openbsd7",
     "opnsense21",
     "oracle7",
     "oracle8",
     "rocky8",
-    "ubuntu20"
+    "ubuntu20",
+    "ubuntu22"
   ]
 }

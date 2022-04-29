@@ -1,6 +1,6 @@
 #!/usr/local/bin/cbsd
 MYARG=
-MYOPTARG=
+MYOPTARG="mode"
 MYDESC="Manage CBSD API whitelist file via mcedit"
 CBSDMODULE="myb"
 ADDHELP="
@@ -13,6 +13,7 @@ Manage /usr/local/etc/nginx/acl.conf content via mcedit.
 EXTHELP=
 
 . ${subrdir}/tools.subr
+mode=
 . ${subrdir}/cbsdinit.subr
 . ${subrdir}/system.subr
 
@@ -23,38 +24,44 @@ WHITELIST_NGINX="/usr/local/etc/nginx/acl.conf"
 [ ! -r ${WHITELIST_FILE} ] && ${TOUCH_CMD} ${WHITELIST_FILE}
 [ ! -r ${WHITELIST_NGINX} ] && ${TOUCH_CMD} ${WHITELIST_NGINX}
 
+[ -n "${MYIP}" ] && SHOWIP="e.g. your IP: ${MYIP}"
+
 TEMP_FILE=$( mktemp )
 ${CAT_CMD} > ${TEMP_FILE} <<EOF
 # use one IP per line, e.g:
-# 192.168.0.1
-# 192.168.0.2
+# 192.168.0.1;
+# 192.168.0.2;
+#   ${SHOWIP}
 EOF
 
-${GREP_CMD} -v '^#' ${WHITELIST_FILE} | ${GREP_CMD} . | ${SORT_CMD} -u >> ${TEMP_FILE}
+${GREP_CMD} -v '^#' ${WHITELIST_FILE} | ${GREP_CMD} . | ${GREP_CMD} -v "deny|allow" | ${SORT_CMD} -u | ${TR_CMD} -d ';' >> ${TEMP_FILE}
 
-trap "[ -r ${TEMP_FILE} ] && /bin/rm -f ${TEMP_FILE}" HUP INT ABRT BUS TERM EXIT
+trap "[ -r ${TEMP_FILE} ] && ${RM_CMD} -f ${TEMP_FILE}" HUP INT ABRT BUS TERM EXIT
 
 . ${distdir}/subr/settings-tui-virtual.subr
 . ${distdir}/subr/tools.subr
-. ${dialog}
+#. ${dialog}
+
+# disable ACL
+if [ "${mode}" = "off" ]; then
+	echo "allow all;" > ${WHITELIST_NGINX}
+#	${CAT_CMD} ${TEMP_FILE} >> ${WHITELIST_NGINX}
+	${SERVICE_CMD} nginx reload
+	exit 0
+fi
 
 /usr/local/bin/mcedit -b +1024 ${TEMP_FILE}
 
 ${GREP_CMD} -v ^# ${TEMP_FILE} | ${GREP_CMD} . | ${SORT_CMD} -u > ${WHITELIST_FILE}.tmp
 
-diff=$( diff -ruN ${WHITELIST_FILE}.tmp ${WHITELIST_FILE} )
-
-if [ -n "${diff}" ]; then
-	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist changed${N0_COLOR}"
-	${ECHO} "${N1_COLOR}Install new whitelist..${N0_COLOR}"
-	${MV_CMD} ${WHITELIST_FILE}.tmp ${WHITELIST_FILE}
-	${TRUNCATE_CMD} -s0 ${WHITELIST_NGINX}
-	${GREP_CMD} . ${WHITELIST_FILE} | while read _ip; do
-		echo "allow ${_ip}" >> ${WHITELIST_NGINX}
-	done
-	${SERVICE_CMD} nginx reload
-else
-	${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist unchanged${N0_COLOR}"
-fi
+${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist changed${N0_COLOR}"
+${ECHO} "${N1_COLOR}Install new whitelist..${N0_COLOR}"
+${MV_CMD} ${WHITELIST_FILE}.tmp ${WHITELIST_FILE}
+${TRUNCATE_CMD} ${WHITELIST_NGINX}
+${GREP_CMD} . ${WHITELIST_FILE} | while read _ip; do
+	echo "allow ${_ip};" >> ${WHITELIST_NGINX}
+done
+echo "deny all;" >> ${WHITELIST_NGINX}
+${SERVICE_CMD} nginx reload
 
 exit 0

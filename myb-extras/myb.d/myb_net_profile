@@ -20,18 +20,23 @@ b=$( border )
 j=$( jorder )
 active=0
 
-if [ -n "${b}" ]; then
-	bn=$( echo ${b} | ${WC_CMD} -w | ${AWK_CMD} '{printf $1}' )
-	active=1
-else
-	bn=0
-fi
-if [ -n "${j}" ]; then
-	jn=$( echo ${j} | ${WC_CMD} -w | ${AWK_CMD} '{printf $1}' )
-	active=1
-else
-	jn=0
-fi
+# bhyve list?
+bn=0
+for i in ${b}; do
+	bn=$(( bn + 1 ))
+done
+[ ${bn} -ne 0 ] && active=1
+
+# jail list?
+jn=0
+for i in ${j}; do
+	# system jails?
+	[ "${i}" = "cbsdpuppet1" ] && continue
+	[ "${i}" = "micro1" ] && continue
+	jn=$(( jn + 1 ))
+done
+[ ${jn} -ne 0 ] && active=1
+
 
 if [ ${active} -eq 1 ]; then
 	${ECHO} "${W1_COLOR}You can't change MyB network profile while you have environments:${N0_COLOR}"
@@ -94,8 +99,8 @@ ${ECHO} "${H2_COLOR}--------------------${N0_COLOR}"
 echo
 
 
-${ECHO} "${profile1_color} ${profile1_sign} 1) Single External IPv4 (${profile1_desc}).${N0_COLOR}"
-${ECHO} "${profile2_color} ${profile2_sign} 2) Multi-NIC IPv4 private / IPv6 (${profile2_desc})${N0_COLOR}"
+${ECHO} "${profile1_color} ${profile1_sign} 1) Single NIC: private IPv4 (${profile1_desc}).${N0_COLOR}"
+${ECHO} "${profile2_color} ${profile2_sign} 2) Multi  NIC: private IPv4 / external IPv6 (${profile2_desc})${N0_COLOR}"
 
 echo
 	read p

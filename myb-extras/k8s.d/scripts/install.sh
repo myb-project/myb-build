@@ -21,6 +21,8 @@ if [ -z "${workdir}" ]; then
 	[ -z "${cbsd_workdir}" ] && . /etc/rc.conf
 	[ -z "${cbsd_workdir}" ] && exit 0
 	workdir="${cbsd_workdir}"
+else
+	cbsd_workdir="${workdir}"
 fi
 
 set -e

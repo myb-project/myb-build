@@ -1,0 +1,77 @@
+# microjail 'cbsd copy-binlib' index for busybox-like jail
+etc/rc.d/FILESYSTEMS
+etc/rc.d/LOGIN
+etc/rc.d/sshd
+etc/rc
+etc/rc.subr
+etc/login.conf.db
+etc/termcap
+# inherits users/pass/group
+etc/master.passwd
+etc/passwd
+etc/group
+etc/pwd.db
+etc/spwd.db
+
+# /bin
+% bin/ed bin/red
+% bin/link bin/ln
+% bin/rmdir bin/unlink
+bin/mv
+% bin/pgrep bin/pkill
+% bin/test bin/[
+bin/pwd
+bin/chmod
+bin/sh
+bin/sleep
+bin/date
+bin/ps
+bin/expr
+bin/hostname
+bin/kenv
+bin/realpath
+bin/cat
+bin/ls
+bin/mkdir
+bin/rm
+bin/kill
+bin/cp
+bin/echo
+bin/csh
+
+# /sbin
+sbin/sysctl
+sbin/ldconfig
+sbin/rcorder
+
+# /usr/bin
+% usr/bin/egrep usr/bin/fgrep usr/bin/grep usr/bin/rgrep
+usr/bin/login
+usr/bin/tail
+% usr/bin/ex usr/bin/nex usr/bin/nvi usr/bin/nview usr/bin/vi usr/bin/view
+% usr/bin/less usr/bin/more
+usr/bin/tr
+usr/bin/cut
+usr/bin/resizewin
+usr/bin/limits
+% usr/bin/groups usr/bin/id usr/bin/whoami
+usr/bin/locale
+usr/bin/head
+usr/bin/tee
+
+# /usr/sbin  (chown is hardlink -> ??)
+usr/sbin/chown
+usr/sbin/sshd
+
+# hardcoded for ELF/SSH
+libexec/ld-elf.so.1
+usr/lib/libgssapi_spnego.so
+
+# chech /etc/pam.d/{system,sshd}
+usr/lib/pam_unix.so
+usr/lib/pam_opie.so
+usr/lib/pam_opieaccess.so
+usr/lib/pam_nologin.so
+usr/lib/pam_login_access.so
+usr/lib/pam_permit.so
+usr/lib/pam_lastlog.so

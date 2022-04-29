@@ -1,0 +1,50 @@
+quiet=0
+
+jail_micro1()
+{
+	ver=13.1
+	baserw=1
+	astart=0
+	ip4_addr="DHCP"
+	host_hostname="${jname}.my.domain"
+	pkg_bootstrap=0
+	runasap=0
+}
+
+postcreate_micro1()
+{
+
+	cbsd copy-binlib basedir=/ chaselibs=1 dstdir=/usr/jails/jails-data/micro1-data filelist=/root/myb-build/FreeBSD-microjail.txt
+
+	# turn off syslogd/sendmail/cron services
+	sysrc \
+		syslogd_enable="NO" \
+		syslogd_flags="-ss" \
+		sendmail_enable="NO" \
+		sendmail_submit_enable="NO" \
+		sendmail_outbound_enable="NO" \
+		sendmail_msp_queue_enable="NO" \
+		cron_enable="NO" \
+		sshd_flags="-oUseDNS=no -oPermitRootLogin=no" \
+		sshd_enable=YES
+
+	/bin/cp -a /etc/ssh /usr/jails/jails-data/micro1-data/etc/
+	/bin/cp -a /etc/gss /usr/jails/jails-data/micro1-data/etc/
+	/bin/cp -a /etc/pam.d /usr/jails/jails-data/micro1-data/etc/
+
+	mkdir -p /usr/jails/jails-data/micro1-data/var/empty /usr/jails/jails-data/micro1-data/var/log /usr/jails/jails-data/micro1-data/var/run /usr/jails/jails-data/micro1-data/root /usr/jails/jails-data/micro1-data/dev
+	chmod 0700 /usr/jails/jails-data/micro1-data/var/empty
+
+	/usr/sbin/pw -R /usr/jails/jails-data/micro1-data usermod root -s /bin/sh
+	/usr/sbin/pw -R /usr/jails/jails-data/micro1-data useradd fcp -s /bin/csh -c "FCP user"
+
+	/usr/sbin/chroot /usr/jails/jails-data/micro1-data mkdir -p /home/fcp/.ssh
+	/usr/sbin/chroot /usr/jails/jails-data/micro1-data chown fcp /home/fcp /home/fcp/.ssh
+
+	/usr/local/bin/rsync -avz /root/myb-build/micro1/etc /usr/jails/jails-data/micro1-data/etc/
+	[ ! -d /usr/jails/jails-data/micro1-data/usr/local/bin ] && mkdir -p /usr/jails/jails-data/micro1-data/usr/local/bin
+	/usr/local/bin/rsync -avz /root/myb-build/micro1/usr/local/bin/ /usr/jails/jails-data/micro1-data/usr/local/bin/
+
+	[ ! -d /usr/jails/jails-data/micro1-data/usr/local/share/certs ] && mkdir -p /usr/jails/jails-data/micro1-data/usr/local/share/certs
+	/usr/local/bin/rsync -avz /root/myb-build/micro1/usr/local/share/certs/  /usr/jails/jails-data/micro1-data/usr/local/share/certs/
+}

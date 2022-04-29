@@ -1,0 +1,6 @@
+# list for 'cbsd cpr':
+# cbsd cpr pkglist=micro1.list dstdir=/tmp/micro1epo new=1
+/usr/ports/security/ca_root_nss
+/usr/ports/sysutils/kubectl
+/usr/ports/sysutils/helm
+/usr/ports/sysutils/k9s

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-profile="vm-freebsd-cloud-OPNSense-21-RELEASE-amd64-21.conf"
+profile="vm-openbsd-cloud-openbsd-x86-70.conf"
 cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
 /root/bin/checkiso.sh check
 exit 0
