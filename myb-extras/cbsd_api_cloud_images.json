@@ -21,6 +21,7 @@
     "oracle8",
     "rocky8",
     "ubuntu20",
-    "ubuntu22"
+    "ubuntu22",
+    "ubuntu22_vdi"
   ]
 }

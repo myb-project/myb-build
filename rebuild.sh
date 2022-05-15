@@ -17,11 +17,14 @@ cp -a /root/myb-build/myb-extras/k8s-system-default /root/myb-build/myb-extras/k
 #/root/myb-build/ci/00_srcup.sh
 #/root/myb-build/ci/10_patch-src.sh
 #/root/myb-build/ci/20_world.sh
-#/root/myb-build/ci/30_cpr.sh
-#/root/myb-build/ci/35_cpr-micro.sh
+/root/myb-build/ci/30_cpr.sh
+/root/myb-build/ci/35_cpr-micro.sh
+
+# half build
 /root/myb-build/ci/40_jail.sh
 /root/myb-build/ci/44_export-micro.sh
 /root/myb-build/ci/50_purgejail.sh
+/root/myb-build/ci/55_purge_distribution.sh
 /root/myb-build/ci/60_distribution.sh
 /root/myb-build/ci/70_manifests.sh
 /root/myb-build/ci/90_conv.sh

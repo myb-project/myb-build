@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# $MyBee$
+#
+
+# PROVIDE: myb-os-release
+# REQUIRE: mountcritremote FILESYSTEMS
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+: ${osrelease_file:=/var/run/myb-os-release}
+: ${osrelease_perms:=444}
+name="osrelease"
+desc="Update ${osrelease_file}"
+rcvar="mybosrelease_enable"
+start_cmd="mybosrelease_start"
+stop_cmd=":"
+
+mybosrelease_start()
+{
+	local _version _version_id
+
+	. /usr/local/etc/mybee/version
+
+	check_startmsgs && echo -n "Updating ${osrelease_file} "
+	_version=$(freebsd-version -u)
+	_version_id=${_version%%[^0-9.]*}
+	t=$(mktemp -t myb-os-release)
+	cat > "$t" <<-__EOF__
+		NAME=MyBee
+		VERSION="${myb_version}"
+		VERSION_ID="$_version_id"
+		ID=freebsd
+		ANSI_COLOR="0;31"
+		PRETTY_NAME="MyBee ${myb_version}"
+		CPE_NAME="cpe:/o:freebsd:freebsd:$_version_id"
+		HOME_URL="https://myb.convectix.com/"
+		BUG_REPORT_URL="https://github.com/myb-project/myb-build"
+__EOF__
+	install -C -o root -g wheel -m ${osrelease_perms} "$t" "${osrelease_file}"
+	rm -f "$t"
+	check_startmsgs && echo 'done.'
+}
+
+load_rc_config $name
+run_rc_command "$1"

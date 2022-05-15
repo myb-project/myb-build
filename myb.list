@@ -13,3 +13,4 @@
 /usr/ports/mail/mutt
 /usr/ports/net/wireguard
 /usr/ports/sysutils/kubectl
+/usr/ports/sysutils/hw-probe

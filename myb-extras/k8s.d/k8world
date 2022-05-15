@@ -99,7 +99,7 @@ echo "get nodes -o wide:"
 echo "get pv:"
 /usr/local/bin/kubectl get pv
 echo
-echo "Type 'k9s' to rub K9S"
+echo "Type 'k9s' to run K9S"
 EOF
 	${CP_CMD} -a /usr/jails/var/db/k8s/${k8s_name}.kubeconfig /usr/jails/jails-data/${myjail}-data/home/fcp/.kube/config
 

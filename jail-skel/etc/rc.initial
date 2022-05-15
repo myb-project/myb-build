@@ -30,6 +30,44 @@ done )
 
 [ -n "${MYIP}" ] && export MYIP="${MYIP}"
 
+
+
+hwprobe()
+{
+	local p _send=0
+
+	[ -n "${hw_probe_enabled}" ] && return 0
+	[ ! -x /usr/local/bin/hw-probe ] && return 0
+
+	${ECHO} "${H1_COLOR}MyBee first start. Before we start, would you like to send anonymous ( via hw-probe: ${H3_COLOR}https://bsd-hardware.info/${H1_COLOR} ) hardware data (one time, now)? This will allow us to improve hardware support in the future [Y] ?${N2_COLOR}"
+
+	trap "export SEND_STATS=\"n\"" SIGHUP SIGINT SIGTERM
+	# HUP INT ABRT BUS TERM EXIT
+
+	read p
+
+	trap ""
+
+	[ -n "${SEND_STATS}" ] && p="${SEND_STATS}"
+
+	if [ -z "${p}" ]; then
+		_send=1
+	else
+		case "${p}" in
+			[Yy])
+				_send=1
+				;;
+		esac
+	fi
+
+	${SYSRC_CMD} -qf /etc/rc.conf hw_probe_enabled="1" > /dev/null 2>&1
+
+	[ ${_send} -ne 1 ] && return 0
+
+	/usr/local/bin/hw-probe -all -upload
+
+}
+
 check_sshflags()
 {
 	local _i
@@ -60,6 +98,9 @@ change_sshflags()
 
 	${SERVICE_CMD} sshd restart
 }
+
+## MAIN
+hwprobe
 
 # Set our operating platform
 PLATFORM="MyBee"
@@ -151,6 +192,9 @@ while : ; do
 		SMTP_STATUS="unconfigured"
 	fi
 
+	${SYSRC_CMD} -qf /etc/rc.conf ip4="${ip4}" > /dev/null
+	${SYSRC_CMD} -qf /etc/rc.conf ip6="${ip6}" > /dev/null
+
 	echo
 	echo "Welcome to ${PLATFORM} ${myb_version} console."
 	echo
@@ -171,7 +215,7 @@ while : ; do
 	echo -e "${H2_COLOR}4) Change VM network profile (${myb_net_cur_profile})${NORMAL}  ${H2_COLOR}14) Console Keyboard Map${NORMAL}"
 	echo -e "${TEMPLATE_COLOR}5) Install container template${NORMAL}     ${DGRAY}15) NFS/PVC/P9FS shares for VM${NORMAL}"
 	echo -e "${H2_COLOR}6) Shell ( warm cloud image )${NORMAL}     ${DGRAY}16) Set API FQDN ( + certbot )${NORMAL}"
-	echo -e "${H2_COLOR}7) Reboot Server${NORMAL}                  ${DGRAY}17) Kubernetes clusters setting${NORMAL}"
+	echo -e "${H2_COLOR}7) Reboot Server${NORMAL}                  ${H2_COLOR}17) Kubernetes clusters setting${NORMAL}"
 	echo -e "${H2_COLOR}8) Shutdown Server${NORMAL}                ${DGRAY}18) ${NORMAL}"
 	echo -e "${H2_COLOR}9) Configure SMTP${NORMAL} (${SMTP_COLOR}${SMTP_STATUS}${NORMAL})  ${DGRAY}19) ${NORMAL}"
 	echo -e "${H2_COLOR}10) SSH root user: ${myb_ssh_root_ssh}${NORMAL}       ${DGRAY}20) Add cluster node${NORMAL}"
@@ -287,6 +331,9 @@ while : ; do
 			;;
 		14)
 			/usr/sbin/kbdmap
+			;;
+		17)
+			/usr/local/bin/cbsd myb_k8s_settings
 			;;
 		*)
 			;;

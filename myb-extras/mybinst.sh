@@ -7,6 +7,23 @@ echo
 echo " *** [MyBee post-install script] *** "
 echo
 
+# depending on the presence of an unprivileged extra user,
+# we allow or deny remote login for root
+# For FreeBSD 13.1-RELEASE we have 27 users after install
+#nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/usr/sbin/nologin
+#cbsd:*:150:150::0:0:Cbsd user:/usr/jails:/bin/sh
+#cyrus:*:60:60::0:0:the cyrus mail server:/nonexistent:/usr/sbin/nologin
+#messagebus:*:556:556::0:0:D-BUS Daemon User:/nonexistent:/usr/sbin/nologin
+# 30
+users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
+if [ "${users_num}" != "30" ]; then
+	SSH_ROOT_ENABLED=0
+	echo "[${users_num}] Default SSH ROOT access: disabled" | tee -a /var/log/mybinst.log
+else
+	SSH_ROOT_ENABLED=1
+	echo "[${users_num}] Default SSH ROOT access: enabled" | tee -a /var/log/mybinst.log
+fi
+echo
 cd /cbsd
 # FIND
 #tar xfz pkg-1.17.2.pkg
@@ -100,6 +117,7 @@ sysrc \
  ntpd_sync_on_start="YES" \
  cbsd_mq_router_enable="YES" \
  cbsd_mq_api_enable="YES" \
+ cbsd_mq_api_flags="-listen 127.0.0.1:65531 -cluster_limit=10" \
  sshd_enable="YES" \
  syslogd_enable="NO" \
  sendmail_enable="NO" \
@@ -107,14 +125,11 @@ sysrc \
  sendmail_outbound_enable="NO" \
  sendmail_msp_queue_enable="NO" \
  cloned_interfaces="bridge100" \
- ifconfig_bridge100="inet 10.0.100.1/24 up"
+ ifconfig_bridge100="inet 10.0.100.1/24 up" \
+ osrelease_enable="NO" \
+ mybosrelease_enable="YES"
 
-
-# depending on the presence of an unprivileged extra user,
-# we allow or deny remote login for root
-# For FreeBSD 13.1-RELEASE we have 29 users + 'cbsd' = 30
-users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
-if [ "${users_num}" != "30" ]; then
+if [ ${SSH_ROOT_ENABLED} -eq 0 ]; then
 	echo "extra users exist, disable SSH root login by default"
 	sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=no -oPort=22" > /dev/null 2>&1
 else
@@ -209,6 +224,8 @@ truncate -s0 /etc/motd /var/run/motd /etc/motd.template
 #fi
 
 EOF
+
+cp -a /cbsd/myb-os-release /usr/local/etc/rc.d/myb-os-release
 
 #cp -a /cbsd/dynmotd.sh /usr/local/bin/
 truncate -s0 /etc/motd /var/run/motd /etc/motd.template
@@ -375,6 +392,21 @@ rm -f /cbsd/micro1.img
 /usr/local/cbsd/sudoexec/initenv > /var/log/cbsd_init2.log 2>&1
 
 /usr/local/cbsd/modules/k8s.d/scripts/install.sh up > /dev/null 2>&1
+
+cd /
+rm -rf /cbsd
+
+grep -q 'nameserver' /etc/resolv.conf
+ret=$?
+if [ ${ret} -ne 0 ]; then
+	cat >> /etc/resolv.conf <<EOF
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+nameserver 2001:4860:4860::8888
+nameserver 2001:4860:4860::8844
+EOF
+fi
+
 
 /usr/bin/wall <<EOF
   MyBee cluster setup complete, reboot host!
