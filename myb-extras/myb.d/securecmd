@@ -4,4 +4,5 @@ ${SECCMD}
 myb_ip_whitelist \
 myb_pub_whitelist \
 myb_net_profile \
+myb_k8s_settings \
 "

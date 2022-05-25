@@ -110,6 +110,12 @@ EOF
 	${MKDIR_CMD} -m 0777 /usr/jails/jails-data/${myjail}-data/tmp
 	${CHMOD_CMD} u+t /usr/jails/jails-data/${myjail}-data/tmp
 
+	# autoresolv
+	if [ -n "${server_kubeconfig_domain}" ]; then
+		. /etc/rc.conf		# get "$ip4"
+		echo "${ip4} ${k8s_name} ${k8s_name}.${server_kubeconfig_domain}" >> /usr/jails/jails-data/${myjail}-data/etc/hosts
+	fi
+
 	echo "expose jname=${myjail} in=${ssh_console_port} out=22 outaddr=${int_br_ip} mode=add"
 	expose jname=${myjail} in=${ssh_console_port} out=22 mode=add outaddr=${int_br_ip}
 }
@@ -280,12 +286,27 @@ case "${mode}" in
 		create_time=$( ${DATE_CMD} -u "+%Y-%m-%dT%H:%M:%S" )
 
 		if [ "${multi_nic}" = "1" ]; then
-			echo "cbsd k8s mode=init k8s_name=\"${k8s_name}\" master_vm_ram=\"${master_vm_ram}\" pv_enable=\"10g\" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces=\"${int_bridge_name} ${ext_bridge_name}\" init_master_ips2=\"${ext_ip}\" ci_gw42=\"${ext_br_ip}\" develop=${develop} server_ip_extra=\"${ext_ip}\" server_kubeconfig=\"[${ext_ip}]:6443\" runasap=${runasap} email=\"${email}\" cluster=\"try-fcp.org\" server_dns=\"${k8s_name}.try-fcp.org,master1\"" >> /tmp/k8world.log
-			k8s mode=init k8s_name="${k8s_name}" master_vm_ram="${master_vm_ram}" pv_enable="10g" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces="${int_bridge_name} ${ext_bridge_name}" init_master_ips2="${ext_ip}/64,${ext_ip2}/64" ci_gw42="${ext_br_ip}" develop=${develop} server_ip_extra="${ext_ip}" server_kubeconfig="[${ext_ip}]:6443" runasap=${runasap} email="${email}" server_dns="${k8s_name}.try-fcp.org,master1" cluster="try-fcp.org"
+			if [ -n "${server_kubeconfig_domain}" ]; then
+				_server_kubeconfig_domain="${k8s_name}.${server_kubeconfig_domain}:6443"
+				server_dns="${k8s_name}.${server_kubeconfig_domain},master1"
+			else
+				_server_kubeconfig_domain="[${ext_ip}]:6443"
+				server_dns="${k8s_name}.try-fcp.org,master1"
+			fi
+			echo "cbsd k8s mode=init k8s_name=\"${k8s_name}\" master_vm_ram=\"${master_vm_ram}\" pv_enable=\"10g\" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces=\"${int_bridge_name} ${ext_bridge_name}\" init_master_ips2=\"${ext_ip}\" ci_gw42=\"${ext_br_ip}\" develop=${develop} server_ip_extra=\"${ext_ip}\" server_kubeconfig=\"${_server_kubeconfig_domain}\" runasap=${runasap} email=\"${email}\" cluster=\"try-fcp.org\" server_dns=\"${server_dns}\"" >> /tmp/k8world.log
+			k8s mode=init k8s_name="${k8s_name}" master_vm_ram="${master_vm_ram}" pv_enable="10g" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces="${int_bridge_name} ${ext_bridge_name}" init_master_ips2="${ext_ip}/64,${ext_ip2}/64" ci_gw42="${ext_br_ip}" develop=${develop} server_ip_extra="${ext_ip}" server_kubeconfig="${_server_kubeconfig_domain}" runasap=${runasap} email="${email}" server_dns="${server_dns}" cluster="try-fcp.org"
 		else
-			echo "cbsd k8s mode=init k8s_name=\"${k8s_name}\" master_vm_ram=\"${master_vm_ram}\" pv_enable=\"10g\" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces=\"${int_bridge_name}\" develop=${develop} runasap=${runasap} email=\"${email}\" server_ip_extra=\"${ext_ip}\" server_kubeconfig=\"${ext_ip}\" cluster=\"try-fcp.org\" server_dns=\"${k8s_name}.try-fcp.org,master1\"" >> /tmp/k8world.log
-			k8s mode=init k8s_name="${k8s_name}" master_vm_ram="${master_vm_ram}" pv_enable="10g" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces="${int_bridge_name}" develop=${develop} runasap=${runasap} email="${email}" server_dns="${k8s_name}.try-fcp.org,master1" server_ip_extra="${ext_ip}" server_kubeconfig="${ext_ip}" cluster="try-fcp.org"
+			if [ -n "${server_kubeconfig_domain}" ]; then
+				_server_kubeconfig_domain="${k8s_name}.${server_kubeconfig_domain}"
+				server_dns="${k8s_name}.${server_kubeconfig_domain},master1"
+			else
+				_server_kubeconfig_domain="${ext_ip}"
+				server_dns="${k8s_name}.try-fcp.org,master1"
+			fi
+			echo "cbsd k8s mode=init k8s_name=\"${k8s_name}\" master_vm_ram=\"${master_vm_ram}\" pv_enable=\"10g\" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces=\"${int_bridge_name}\" develop=${develop} runasap=${runasap} email=\"${email}\" server_ip_extra=\"${ext_ip}\" server_kubeconfig=\"${_server_kubeconfig_domain}\" cluster=\"try-fcp.org\" server_dns=\"${server_dns}\"" >> /tmp/k8world.log
+			k8s mode=init k8s_name="${k8s_name}" master_vm_ram="${master_vm_ram}" pv_enable="10g" init_master_ips=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.2 ip4_gw=${int_br_ip} vip=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.3 master_interfaces="${int_bridge_name}" develop=${develop} runasap=${runasap} email="${email}" server_dns="${server_dns}" server_ip_extra="${ext_ip}" server_kubeconfig="${_server_kubeconfig_domain}" cluster="try-fcp.org"
 		fi
+
 		#echo "[debug]: k8s mode=init ${pass_cmd} ip4_gw=${int_br_ip} node_cidr=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.0/24 master_interfaces=vale${MYID} worker_interfaces=vale${MYID} runasap=${runasap}"
 		#k8s mode=init ${pass_cmd} ip4_gw=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.1 node_cidr=${K8S_IP_OCTET1}.${K8S_IP_OCTET2}.${MYID}.0/24 master_interfaces=vale${MYID} worker_interfaces=vale${MYID} runasap=${runasap}
 

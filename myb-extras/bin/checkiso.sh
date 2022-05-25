@@ -10,7 +10,7 @@ fi
 
 ECHO="echo -e"
 
-check="jail centos7 centos8 centos9 debian10 debian11 dflybsd6 fedora36 freebsd13_ufs freebsd13_zfs freebsd14_ufs freebsd14_zfs freepbx homeass k8s netbsd9 openbsd7 openbsd70 opnsense22 oracle7 oracle8 rocky8 ubuntu20 ubuntu22"
+check="jail centos7 centos8 centos9 debian10 debian11 dflybsd6 fedora36 freebsd13_ufs freebsd13_zfs freebsd14_ufs freebsd14_zfs freepbx homeass kali2022 k8s netbsd9 openbsd7 openbsd70 opnsense22 oracle7 oracle8 rocky8 ubuntu20 ubuntu22"
 
 jail_iso="/usr/jails/basejail/base_amd64_amd64_13.1/bin/sh"
 centos7_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-7.9.0-x86_64-cloud.raw"
@@ -31,11 +31,13 @@ freebsd14_ufs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-ufs-14.0.1-CURRENT-amd6
 freebsd14_zfs_iso="/usr/jails/src/iso/cbsd-cloud-FreeBSD-zfs-14.0.1-CURRENT-amd64.raw"
 freepbx_iso="/usr/jails/src/iso/cbsd-cloud-FreePBX-16.0-x86_64-cloud.raw"
 homeass_iso="/usr/jails/src/iso/cbsd-cloud-cloud-HomeAssistant-8.raw"
+kali2022_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Kali-2022-amd64.raw"
 k8s_iso="/usr/jails/src/iso/cbsd-cloud-cloud-kubernetes-24.raw"
 openbsd7_iso="/usr/jails/src/iso/cbsd-cloud-openbsd-71.raw"
 openbsd70_iso="/usr/jails/src/iso/cbsd-cloud-openbsd-70.raw"
 netbsd9_iso="/usr/jails/src/iso/cbsd-cloud-netbsd-9.2a.raw"
 opnsense22_iso="/usr/jails/src/iso/cbsd-cloud-OPNSense-22-RELEASE-amd64.raw"
+windows10_ru_iso="/usr/jails/src/iso/cbsd-cloud-windows10ru-cloud.raw"
 
 for i in ${check}; do
 	link=

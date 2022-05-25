@@ -1,0 +1,7 @@
+#!/bin/sh
+
+profile="vm-linux-cloud-Kali-2022-amd64.conf"
+cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
+/root/bin/checkiso.sh check
+exit 0
+

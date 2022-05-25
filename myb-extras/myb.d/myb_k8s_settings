@@ -1,0 +1,97 @@
+#!/usr/local/bin/cbsd
+MYARG=
+MYOPTARG=
+MYDESC="Manage K8S settings"
+CBSDMODULE="myb"
+ADDHELP="
+
+${H3_COLOR}Description${N0_COLOR}:
+
+Manage K8S settings
+
+"
+EXTHELP=
+
+. ${subrdir}/tools.subr
+. ${subrdir}/cbsdinit.subr
+. ${subrdir}/system.subr
+
+old_k8s_cluster_limit=
+k8s_cluster_limit=
+server_kubeconfig_domain=
+
+. /etc/rc.conf
+. /usr/jails/etc/k8world.conf
+[ -z "${k8s_cluster_limit}" ] && k8s_cluster_limit="10"
+old_k8s_cluster_limit="${k8s_cluster_limit}"
+k8s_user_cluster_limit="0"
+
+global_cluster_limit_color="${N4_COLOR}"
+users_cluster_limit_color="${N4_COLOR}"
+kubeconfig_domain_color="${N2_COLOR}"
+break_color="${H2_COLOR}"
+
+trap "exit" SIGHUP SIGINT SIGTERM
+
+while [ true ]; do
+echo
+${ECHO} "${H2_COLOR}K8S settings${N0_COLOR}"
+${ECHO} "${H2_COLOR}--------------------${N0_COLOR}"
+echo
+
+${ECHO} "${global_cluster_limit_color} 1) Change global K8S cluster limit (${k8s_cluster_limit});${N0_COLOR}"
+${ECHO} "${users_cluster_limit_color} 2) Change per-user K8S cluster limit (${k8s_user_cluster_limit});${N0_COLOR}"
+${ECHO} "${kubeconfig_domain_color} 3) Change domain name for K8S (kubeconfig_domain: ${server_kubeconfig_domain});${N0_COLOR}"
+echo
+${ECHO} "${break_color} 0) exit;${N0_COLOR}"
+echo
+	read p
+
+	case "${p}" in
+		1)
+			${ECHO} "${W1_COLOR}Not availabled in current version${N0_COLOR}"
+			continue
+			while [ true ]; do
+				${ECHO} "${H2_COLOR} enter new global K8S cluster limit${N0_COLOR}"
+				read p
+			done
+			;;
+		2)
+			${ECHO} "${W1_COLOR}Not availabled in current version${N0_COLOR}"
+			continue
+			;;
+		3)
+			while [ true ]; do
+				printf "${H2_COLOR} enter new domain for K8S, e.g. ${N2_COLOR}try-fcp.org${H2_COLOR}: ${N0_COLOR}"
+				read p
+				if getyesno "Change/reconfigure K8S cluster domain settings to: [${p}]?"; then
+					${SYSRC_CMD} -qf /usr/jails/etc/k8world.conf server_kubeconfig_domain="${p}" > /dev/null
+					server_kubeconfig_domain="${p}"
+					if [ -n "${p}" ]; then
+						cat <<EOF
+	Please note, all subdomain records *.${p} should be pointed to MyBee IPs, e.g. for bind/named:
+
+*.${p}	IN	A	${ip4}
+EOF
+					[ -n "${ip6}" -a "${ip6}" != "::1" ] && echo "*.${p}	IN	AAAA	${ip6}"
+					fi
+					echo
+					break
+				else
+					break
+				fi
+			done
+			;;
+		0)
+			trap ""
+			exit
+			;;
+		*)
+			;;
+	esac
+
+done
+
+echo "Reconfiguring MyBee network profile [ ${old_profile} -> ${new_profile} ]..."
+
+exit 0
