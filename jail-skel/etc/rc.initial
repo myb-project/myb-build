@@ -18,19 +18,22 @@ trap : 4
 # Make sure the user can't access rootshell by pressing Ctrl-Z
 trap : 18
 
-MYTTY=$( tty )
+check_tty()
+{
+	MYTTY=$( tty )
 
-MYIP=$( /usr/bin/w -h -n | while read _user _tty _ip _x; do
-	_tty="/dev/${_tty}"
-	if [ "${_tty}" = "${MYTTY}" ]; then
-		echo "${_ip}"
-		exit 0
-	fi
-done )
+	[ "${MYTTY}" = "not a tty" ] && exit 0
 
-[ -n "${MYIP}" ] && export MYIP="${MYIP}"
+	MYIP=$( /usr/bin/w -h -n | while read _user _tty _ip _x; do
+		_tty="/dev/${_tty}"
+		if [ "${_tty}" = "${MYTTY}" ]; then
+			echo "${_ip}"
+			exit 0
+		fi
+	done )
 
-
+	[ -n "${MYIP}" ] && export MYIP="${MYIP}"
+}
 
 hwprobe()
 {
@@ -100,6 +103,8 @@ change_sshflags()
 }
 
 ## MAIN
+check_tty
+
 hwprobe
 
 # Set our operating platform
@@ -121,6 +126,8 @@ MYB_SMTP_CONFIG_FILE="/usr/local/etc/smtp.conf"
 [ -z "${myb_net_cur_profile}" ] && myb_net_cur_profile="1"
 
 while : ; do
+	check_tty
+
 	# exit loop
 	[ -r /tmp/stop ] && exit 0
 	# re-read ACL on/off, net profile
@@ -136,11 +143,11 @@ while : ; do
 
 	if [ -z "${PUB_WL}" ]; then
 		PUB_WL="disabled"
-		${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+		${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
 	fi
 	if [ -z "${IP_WL}" ]; then
 		IP_WL="disabled"
-		${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+		${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
 	fi
 
 	case ${PUB_WL} in
@@ -192,8 +199,8 @@ while : ; do
 		SMTP_STATUS="unconfigured"
 	fi
 
-	${SYSRC_CMD} -qf /etc/rc.conf ip4="${ip4}" > /dev/null
-	${SYSRC_CMD} -qf /etc/rc.conf ip6="${ip6}" > /dev/null
+	${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf ip4="${ip4}" > /dev/null
+	${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf ip6="${ip6}" > /dev/null
 
 	echo
 	echo "Welcome to ${PLATFORM} ${myb_version} console."
@@ -284,7 +291,7 @@ while : ; do
 				enabled)
 					if getyesno "Turn ACL OFF? ('n' or '0' - leave as enabled) "; then
 						IP_WL="disabled"
-						${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
 						_editfile=0
 						cbsd myb_ip_whitelist mode=off
 					fi
@@ -292,7 +299,7 @@ while : ; do
 				disabled)
 					if getyesno "Turn ACL ON? ('n' or '0' - leave as disabled) "; then
 						IP_WL="enabled"
-						${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
+						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
 					fi
 					;;
 			esac
@@ -306,8 +313,8 @@ while : ; do
 				enabled)
 					if getyesno "Turn Pubkey ACL OFF? ('n' or '0' - leave as enabled) "; then
 						PUB_WL="disabled"
-						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
-						${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531" > /dev/null 2>&1
+						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531" > /dev/null 2>&1
 						_editfile=0
 						${SERVICE_CMD} cbsd-mq-api restart
 					fi
@@ -315,8 +322,8 @@ while : ; do
 				disabled)
 					if getyesno "Turn Pubkey ACL ON? ('n' or '0' - leave as disabled) "; then
 						PUB_WL="enabled"
-						${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
-						${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531 -allowlist /usr/local/etc/cbsd-mq-api.allow" > /dev/null 2>&1
+						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf PUB_WL="${PUB_WL}" > /dev/null 2>&1
+						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf cbsd_mq_api_flags="-listen 127.0.0.1:65531 -allowlist /usr/local/etc/cbsd-mq-api.allow" > /dev/null 2>&1
 						${SERVICE_CMD} cbsd-mq-api restart
 					fi
 					;;
