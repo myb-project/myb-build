@@ -1,5 +1,6 @@
 {
   "images": [
+    "alma9",
     "centos7",
     "centos8",
     "centos9",
@@ -20,7 +21,9 @@
     "opnsense21",
     "oracle7",
     "oracle8",
+    "oracle9",
     "rocky8",
+    "rocky9",
     "ubuntu20",
     "ubuntu22",
     "ubuntu22_vdi"

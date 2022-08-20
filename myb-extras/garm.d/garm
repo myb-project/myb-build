@@ -1,0 +1,655 @@
+#!/usr/local/bin/cbsd
+MYARG=
+MYOPTARG="mode owner reponame poolname id"
+MYDESC="Manage GARM"
+CBSDMODULE="garm"
+ADDHELP="
+${H3_COLOR}Description${N0_COLOR}:
+
+GARM is GitHub Actions Runners Manager. This module helps you to
+configure it.
+
+To use GARM, your need administrator rights to the repository you 
+want to connect. To start:
+
+cbsd garm
+
+And init GARM. After entering PAT:
+
+--
+GARM has three layers:
+
+  Repositories or organizations  (cbsd garm mode=addrepo)
+             |
+             V
+     Pools of runners (cbsd garm mode=addpool)
+             |
+             V
+        The runners
+
+${H3_COLOR}Options${N0_COLOR}:
+
+  mode=reset   - reset.
+  mode=addrepo - add repo.
+  mode=lsrepo  - list of repo.
+  mode=delrepo - del repo.
+  mode=addpool - add pool.
+  mode=delpool - del pool.
+  mode=updpool - update pool.
+
+"
+EXTHELP=
+
+API_FQDN=
+. /etc/rc.conf		# API_FQDN ?
+
+. ${subrdir}/tools.subr
+. ${subrdir}/cbsdinit.subr
+. ${subrdir}/system.subr
+
+DIST_MODULE_PATH="${distmoduledir}/garm.d"
+GARM_CMD="/usr/local/bin/garm"
+GARM_CLI_CMD="/usr/local/bin/garm-cli"
+GARM_SERVICE_RC="/usr/local/etc/rc.d/garm"
+
+[ ! -r ${workdir}/etc/bhyve-api.conf ] && err 1 "${N1_COLOR}${CBSD_APP}: no such bhyve-api.conf for bhyve profile maps, please copy/create entries in ${N2_COLOR}${workdir}/etc/bhyve-api.conf${N0_COLOR}"
+[ ! -x ${GARM_CMD} ] && err 1 "${N1_COLOR}${CBSD_APP}: no such garm executable ( ${GARM_CMD} ), please install first: ${N2_COLOR}sysutils/garm${N0_COLOR}"
+[ ! -x ${GARM_CLI_CMD} ] && err 1 "${N1_COLOR}${CBSD_APP}: no such garm-cli executable ( ${GARM_CLI_CMD} ), please install first: ${N2_COLOR}sysutils/garm${N0_COLOR}"
+[ ! -x ${GARM_SERVICE_RC} ] && err 1 "${N1_COLOR}${CBSD_APP}: no such garm rc.d script ( ${GARM_SERVICE_RC} ), please install first: ${N2_COLOR}sysutils/garm${N0_COLOR}"
+[ ! -d ${dbdir}/garm ] && ${MKDIR_CMD} -p ${dbdir}/garm
+
+MOD_DBDIR="${dbdir}/garm"
+MOD_CONFIG="${dbdir}/garm/garm.conf"
+
+WEBHOOK_SECRET=
+URL=
+PAT=
+
+get_pool_flavors()
+{
+	local _flavors_available _fnum=0
+
+	${ECHO} "Available flavors, please select name for new pool:"
+	_flavors_available=$( cbsdsqlro ${dbdir}/local.sqlite "SELECT name FROM vmpackages" | ${XARGS_CMD} )
+
+	[ -z "${_flavors_available}" ] && err 1 "${N1_COLOR}${CBSD_APP}: error: unable to get flavors from SQL${N0_COLOR}"
+
+	flavors_available=
+
+	for i in ${_flavors_available}; do
+		if [ -z "${flavors_available}" ]; then
+			flavors_available="${i}"
+		else
+			flavors_available="${flavors_available} ${i}"
+		fi
+		_rnum=$(( _rnum + 1 ))
+	done
+
+
+	flavors=
+	oflavors=
+	tmp_choice=$( ${MKTEMP_CMD} )
+	trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+		flavors=
+		num=0
+		env NOCOLOR=1 vm-packages display=name,pkg_vm_cpus,pkg_vm_ram,pkg_vm_disk header=0 | while read name cpus ram disk; do
+			[ ${num} -eq 0 ] && ${ECHO} "${H2_COLOR}NAME${H2_COLOR} CPU RAM DISK${N0_COLOR}"
+			num=$(( num + 1 ))
+			${ECHO} "${H1_COLOR}${name}${N2_COLOR} ${cpus} ${ram} ${disk}${N0_COLOR}"
+		done | ${COLUMN_CMD} -t
+		printf "You choice [${flavors_available}]: "
+		read oflavors
+
+		if [ ${_rnum} -eq 1 -a -z "${orepos}" ]; then
+			oflavors="${flavors_available}"
+		fi
+
+		for i in ${flavors_available}; do
+			if [ "${i}" = "${oflavors}" ]; then
+				${SYSRC_CMD} -qf ${tmp_choice} flavors="${oflavors}" > /dev/null 2>&1
+				flavors="${oflavors}"
+			fi
+		done
+		[ -n "${flavors}" ] && break
+		echo "No such flavor: ${oflavors}, available: [${flavors_available}]"
+	done
+	trap "" SIGHUP SIGINT SIGTERM
+	flavors=
+	if [ -r ${tmp_choice} ]; then
+		. ${tmp_choice}
+		${RM_CMD} -f ${tmp_choice}
+	fi
+	[ -z "${flavors}" ] && exit 0
+	echo "SELECTED: ${flavors}"
+}
+
+get_pool_images()
+{
+	${ECHO} "Available images, please select name for new pool:"
+	[ ! -r /usr/local/etc/cbsd_api_cloud_images.json ] && exit 0
+	images_available=$( ${CAT_CMD} /usr/local/etc/cbsd_api_cloud_images.json | /usr/local/bin/jq | ${GREP_CMD} -v images | ${TR_CMD} -d '{",]} ' | ${XARGS_CMD} )
+	[ -z "${images_available}" ] && exit 0
+	images=
+	oimages=
+	tmp_choice=$( ${MKTEMP_CMD} )
+	trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+		images=
+		num=0
+		printf "You choice [${images_available}]: "
+		read oimages
+		for i in ${images_available}; do
+			if [ "${i}" = "${oimages}" ]; then
+				${SYSRC_CMD} -qf ${tmp_choice} images="${oimages}" > /dev/null 2>&1
+				images="${oimages}"
+			fi
+		done
+		[ -n "${images}" ] && break
+		echo "No such flavor: ${oimages}, available: [${images_available}]"
+	done
+	trap "" SIGHUP SIGINT SIGTERM
+	images=
+	if [ -r ${tmp_choice} ]; then
+		. ${tmp_choice}
+		${RM_CMD} -f ${tmp_choice}
+	fi
+	[ -z "${images}" ] && exit 0
+	echo "SELECTED: ${images}"
+}
+
+
+get_pool_repos()
+{
+	local _repos_available _rnum=0
+
+	repos_available=
+
+	_repos_available=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT owner,name FROM repositories;" 2>/dev/null | while read tmp; do
+		reponame=$( echo ${tmp} | ${TR_CMD} "|" "/" )
+		printf "${reponame} "
+	done )
+	[ -z "${_repos_available}" ] && err 1 "${N1_COLOR}${CBSD_APP}: error: unable to get repos_available list from SQL${N0_COLOR}"
+
+	for i in ${_repos_available}; do
+		if [ -z "${repos_available}" ]; then
+			repos_available="${i}"
+		else
+			repos_available="${repos_available} ${i}"
+		fi
+		_rnum=$(( _rnum + 1 ))
+	done
+
+	${ECHO} "Available repositories, please select for new pool:"
+	repos=
+	orepos=
+	tmp_choice=$( ${MKTEMP_CMD} )
+	trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+		repos=
+		num=0
+		printf "You choice [${repos_available}]: "
+		read orepos
+
+		if [ ${_rnum} -eq 1 -a -z "${orepos}" ]; then
+			orepos="${repos_available}"
+		fi
+
+		for i in ${repos_available}; do
+			if [ "${i}" = "${orepos}" ]; then
+				${SYSRC_CMD} -qf ${tmp_choice} repos="${orepos}" > /dev/null 2>&1
+				repos="${orepos}"
+			fi
+		done
+		[ -n "${repos}" ] && break
+		echo "No such flavor: ${orepos}, available: [${repos_available}]"
+	done
+	trap "" SIGHUP SIGINT SIGTERM
+	repos=
+	if [ -r ${tmp_choice} ]; then
+		. ${tmp_choice}
+		${RM_CMD} -f ${tmp_choice}
+	fi
+	[ -z "${repos}" ] && exit 0
+	echo "SELECTED: ${repos}"
+}
+
+get_pool_max_runners()
+{
+	tmp_choice=$( ${MKTEMP_CMD} )
+	trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+		max_runners=
+		omax_runners=
+		printf "Enter max runners (num): "
+		read omax_runners
+		if is_number "${omax_runners}"; then
+			echo "not a number, try again: ${omax_runners}"
+			continue
+		fi
+
+		if [ ${omax_runners} -gt 0 ]; then
+			${SYSRC_CMD} -qf ${tmp_choice} max_runners="${omax_runners}" > /dev/null 2>&1
+			max_runners="${omax_runners}"
+		fi
+		[ -n "${max_runners}" ] && break
+		echo "invalid values: ${omax_runners}"
+	done
+	trap "" SIGHUP SIGINT SIGTERM
+	max_runners=
+	if [ -r ${tmp_choice} ]; then
+		. ${tmp_choice}
+		${RM_CMD} -f ${tmp_choice}
+	fi
+	[ -z "${max_runners}" ] && exit 0
+	echo "SELECTED: ${max_runners}"
+}
+
+get_pool_labels()
+{
+	tmp_choice=$( ${MKTEMP_CMD} )
+	trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+
+	while [ true ]; do
+		labels=
+		olabels=
+		printf "Enter comma-separated labels: "
+		read olabels
+		labels=$( echo "${labels}" | ${TR_CMD} -d " " )
+		${SYSRC_CMD} -qf ${tmp_choice} labels="${olabels}" > /dev/null 2>&1
+		labels="${olabels}"
+		break
+	done
+
+	trap "" SIGHUP SIGINT SIGTERM
+	labels=
+	if [ -r ${tmp_choice} ]; then
+		. ${tmp_choice}
+		${RM_CMD} -f ${tmp_choice}
+	fi
+	echo "SELECTED: ${labels}"
+}
+
+
+get_pool_min_runners()
+{
+	tmp_choice=$( ${MKTEMP_CMD} )
+	trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+		min_runners=
+		omin_runners=
+		printf "Enter min idle runners (num): "
+		read omin_runners
+		if is_number "${omin_runners}"; then
+			echo "not a number, try again: ${omin_runners}"
+			continue
+		fi
+		if [ ${omin_runners} -gt ${max_runners} ]; then
+			echo "min_runners can not be greater than max_runners: ${omin_runners} > ${max_runners}"
+			continue
+		fi
+		if [ ${omax_runners} -gt 0 ]; then
+			${SYSRC_CMD} -qf ${tmp_choice} min_runners="${omin_runners}" > /dev/null 2>&1
+			min_runners="${omin_runners}"
+		fi
+		[ -n "${min_runners}" ] && break
+		echo "invalid values: ${omin_runners}"
+	done
+	trap "" SIGHUP SIGINT SIGTERM
+	min_runners=
+	if [ -r ${tmp_choice} ]; then
+		. ${tmp_choice}
+		${RM_CMD} -f ${tmp_choice}
+	fi
+	[ -z "${min_runners}" ] && exit 0
+	echo "SELECTED: ${min_runners}"
+}
+
+update_pool_info()
+{
+
+	trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+cat <<EOF
+
+1. Flavors: ${flavors}
+2. Images: ${images}
+3. Repos: ${repos}
+4. Max runners: ${max_runners}
+5. Min idle runners" ${min_runners}
+6. Labels: ${labels}
+
+Select 1-6 to change settings or 'Enter' to apply settings.
+
+EOF
+
+	read p
+
+	if [ -z "${p}" ]; then
+		echo "APPLY"
+		${SYSRC_CMD} -qf ${tmp_choice} \
+			flavors="${flavors}" \
+			images="${images}" \
+			repos="${repos}" \
+			max_runners="${max_runners}" \
+			min_runners="${min_runners}" \
+			labels="${olabels}" \
+			> /dev/null 2>&1
+		break
+	fi
+
+	case "${p}" in
+		1)
+			get_pool_flavors
+			continue
+			;;
+		2)
+			get_pool_images
+			continue
+			;;
+		3)
+			get_pool_repos
+			continue
+			;;
+		4)
+			get_pool_max_runners
+			continue
+			;;
+		5)
+			get_pool_min_runners
+			continue
+			;;
+		6)
+			get_pool_labels
+			continue
+			;;
+		*)
+			echo "unknown values"
+			continue
+			;;
+	esac
+
+	done
+
+	trap "" SIGHUP SIGINT SIGTERM
+
+	for i in flavors images repos max_runners min_runners labels; do
+		unset ${i}
+	done
+
+	flavors=
+	images=
+	repos=
+	max_runners=
+	min_runners=
+	labels=
+
+	if [ -r ${tmp_choice} ]; then
+		. ${tmp_choice}
+		${RM_CMD} -f ${tmp_choice}
+	fi
+
+	for i in flavors images repos max_runners min_runners; do
+		eval T="\$$i"
+		[ -z "${T}" ] && echo "empty $i" && exit 0
+		eval "${i}=\"${T}\""
+	done
+
+	return 0
+}
+
+case "${mode}" in
+	reset)
+		${SERVICE_CMD} garm stop || true
+		${RM_CMD} -f ${MOD_CONFIG}
+		[ -r /usr/local/etc/garm/garm.db ] && ${RM_CMD} /usr/local/etc/garm/garm.db
+		[ -d /root/.local/share/garm-cli ] && ${RM_CMD} -rf /root/.local/share/garm-cli
+		echo "reset"
+		exit 0
+		;;
+esac
+
+if [ ! -r ${MOD_CONFIG} ]; then
+	${TOUCH_CMD} ${MOD_CONFIG}
+else
+	. ${MOD_CONFIG}
+fi
+
+if [ -z "${PAT}" ]; then
+	${ECHO} "${N1_COLOR}${CBSD_APP}: PAT not found!${N0_COLOR}"
+	${ECHO} "${N1_COLOR}Please create new PAT (e.g. named 'mybee') via Github Settings -> Developer settings -> Personal access tokens${N0_COLOR}"
+	${ECHO} "${N1_COLOR}https://github.com/settings/tokens/new${N0_COLOR}"
+	${ECHO} "${N1_COLOR}Expiration: No expiration${N0_COLOR}"
+	${ECHO} "${N1_COLOR}From the list of scopes, you will need to select:${N0_COLOR}"
+	${ECHO} "${N2_COLOR}  public_repo ${N1_COLOR}- for access to a repository${N0_COLOR}"
+	${ECHO} "${N2_COLOR}  repo        ${N1_COLOR}- for access to a private repository${N0_COLOR}"
+	${ECHO} "${N2_COLOR}  admin:org   ${N1_COLOR}- if you plan on using this with an organization to which you have access${N0_COLOR}"
+	echo
+	trap "exit" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+		printf "${N1_COLOR}Please insert you PAT here: ${N2_COLOR}"
+		read PAT
+		if [ -n "${PAT}" ]; then
+			${SYSRC_CMD} -qf ${MOD_CONFIG} PAT="${PAT}" > /dev/null 2>&1
+			break
+		fi
+	done
+	${ECHO} "${N0_COLOR}"
+	trap "" SIGHUP SIGINT SIGTERM
+else
+	${ECHO} "${N1_COLOR}PAT exist: ${N2_COLOR}${PAT}${N0_COLOR}"
+fi
+
+if [ -z "${WEBHOOK_SECRET}" ]; then
+	WEBHOOK_SECRET=$( random_password_gen -l 64 )
+	${ECHO} "${N1_COLOR}${CBSD_APP}: bootstrap, new webhook secret was generated: ${N2_COLOR}${WEBHOOK_SECRET}${N0_COLOR}"
+	${SYSRC_CMD} -qf ${MOD_CONFIG} WEBHOOK_SECRET="${WEBHOOK_SECRET}" > /dev/null 2>&1
+else
+	${ECHO} "${N1_COLOR}webhook secret exist: ${N2_COLOR}${WEBHOOK_SECRET}${N0_COLOR}"
+fi
+
+URL_EXAMPLE="https://mybee.example.com"
+
+if [ -n "${API_FQDN}" ]; then
+	case "${API_FQDN}" in
+		*.*)
+			URL_EXAMPLE="https://${API_FQDN}"
+			;;
+	esac
+fi
+
+if [ -z "${URL}" ]; then
+	trap "exit" SIGHUP SIGINT SIGTERM
+	while [ true ]; do
+		printf "${N1_COLOR}Please enter URL which you will use for the hook, e.g. ${N2_COLOR}${URL_EXAMPLE}${N0_COLOR}: "
+		read URL
+		[ -z "${URL}" ] && URL="${URL_EXAMPLE}"
+		if [ -n "${URL}" ]; then
+			${SYSRC_CMD} -qf ${MOD_CONFIG} URL="${URL}" > /dev/null 2>&1
+			break
+		fi
+	done
+	trap "" SIGHUP SIGINT SIGTERM
+else
+	${ECHO} "${N1_COLOR}URL exist: ${N2_COLOR}${URL}${N0_COLOR}"
+fi
+
+[ ! -d /usr/local/etc/garm ] && ${MKDIR_CMD} -p /usr/local/etc/garm
+
+CALLBACK_URL="${URL}/api/v1/callbacks/status"
+
+# render config
+${SED_CMD} -Ees:%%WEBHOOK_SECRET%%:"${WEBHOOK_SECRET}":g \
+	-es#%%CALLBACK_URL%%#"${CALLBACK_URL}"#g \
+	-es#%%PAT%%#"${PAT}"#g \
+	${DIST_MODULE_PATH}/etc/config.toml.tpl > /usr/local/etc/garm/config.toml
+
+if [ ! -d /usr/local/etc/garm/providers.d/mybee ]; then
+	[ -d /usr/local/etc/garm/providers.d ] && ${RM_CMD} -rf /usr/local/etc/garm/providers.d
+	${CP_CMD} -a ${DIST_MODULE_PATH}/providers.d /usr/local/etc/garm/
+fi
+
+${SERVICE_CMD} garm enable > /dev/null 2>&1 || true
+
+if [ "${INIT_SUCCESS}" != "1" ]; then
+	${SERVICE_CMD} garm stop > /dev/null 2>&1 || true
+	[ -r /usr/local/etc/garm/garm.db ] && ${RM_CMD} -f /usr/local/etc/garm/garm.db
+	${SERVICE_CMD} garm start > /dev/null 2>&1
+	${ECHO} "${N1_COLOR}${CBSD_APP}: waiting 5 sec for service up...${N0_COLOR}"
+	# we need to wait service a little
+	sleep 5
+	[ -d /root/.local/share/garm-cli ] && ${RM_CMD} -rf /root/.local/share/garm-cli
+	${ECHO} "Your URL: ${URL}"
+	# we need to start GARM before init
+	PASSWORD=$( random_password_gen -l 64 )
+	${SYSRC_CMD} -qf ${MOD_CONFIG} PASSWORD="${PASSWORD}" > /dev/null 2>&1
+	echo "garm-cli init --name="local_garm" --url ${URL} -e root@localhost --username=mybee --password=\"${PASSWORD}\""
+	garm-cli init --name="local_garm" --url ${URL} -e root@localhost --username=mybee --password="${PASSWORD}"
+	_ret=$?
+	echo "ret: ${_ret}"
+	if [ ${_ret} -eq 0 ]; then
+		${SYSRC_CMD} -qf ${MOD_CONFIG} INIT_SUCCESS="1" > /dev/null 2>&1
+	else
+		err 1 "${N1_COLOR}${CBSD_APP}: failed init${N0_COLOR}"
+	fi
+else
+	${SERVICE_CMD} garm status > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		${SERVICE_CMD} garm start > /dev/null 2>&1
+		${ECHO} "${N1_COLOR}${CBSD_APP}: waiting 5 sec for service up...${N0_COLOR}"
+		sleep 5
+	fi
+	${ECHO} "${N1_COLOR}garm already initialized, credential:${N0_COLOR}"
+#	echo "garm-cli init --name="local_garm" --url ${URL} -e root@localhost --username=mybee --password=\"${PASSWORD}\""
+#	garm-cli init --name="local_garm" --url ${URL} -e root@localhost --username=mybee --password="${PASSWORD}"
+#	_ret=$?
+#	echo "ret: ${_ret}"
+	${GARM_CLI_CMD} credentials list
+fi
+
+if [ -z "${mode}" ]; then
+	${ECHO} "${N1_COLOR}Provider list:${N0_COLOR}"
+	${GARM_CLI_CMD} provider list
+
+	${ECHO} "${N1_COLOR}List of repo:${N0_COLOR}"
+	${GARM_CLI_CMD} repo ls
+
+	${ECHO} "${N1_COLOR}List of runners:${N0_COLOR}"
+	${GARM_CLI_CMD} runner list -a
+
+	${ECHO} "${N1_COLOR}List of pools:${N0_COLOR}"
+	${GARM_CLI_CMD} pool ls -a
+
+	REPO_COUNT=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT COUNT(id) FROM repositories;" 2>/dev/null )
+	POOL_COUNT=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT COUNT(id) FROM pools;" 2>/dev/null )
+	if ! is_number "${REPO_COUNT}"; then
+		if [ ${REPO_COUNT} -eq 0 ]; then
+			${ECHO} "${N1_COLOR}Please use to add first repo: ${N2_COLOR}cbsd garm mode=addrepo owner=XXX reponame=YYY${N0_COLOR}"
+		elif [ ${POOL_COUNT} -eq 0 ]; then
+			${ECHO} "${N1_COLOR}Now having repo, you can add first pool: ${N2_COLOR}cbsd garm mode=addpool${N0_COLOR}"
+		fi
+	else
+		echo "NOT NUMBER $REPO_COUNT"
+	fi
+fi
+
+case "${mode}" in
+	addrepo)
+		echo "ADD REPO"
+		[ -z "${owner}" ] && err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}owner=${N0_COLOR}"
+		[ -z "${reponame}" ] && err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}reponame=${N0_COLOR}"
+		echo "Please go to: https://github.com/${owner}/${reponame}/settings/hooks"
+		echo "1) Add webhooks"
+		echo "2) Set 'Payload URL' to: ${URL}/webhooks"
+		echo "3) Set 'Content type' to: 'application/json'"
+		echo "4) Secret: ${WEBHOOK_SECRET}"
+		echo "5) In 'Which events would you like to trigger this webhook?' choose 'Let me select individual events. ' then check:"
+		echo "   [v] Workflow jobs   (should be at the bottom)"
+		echo
+		echo "Make sure for '[v] Active' and press 'Add webhooks'"
+		echo
+		echo "when you have configured all these steps and added the hook, press any button to continue..."
+		read p
+		garm-cli repo create --credentials=mybee --name=${reponame} --owner=${owner} --webhook-secret="${WEBHOOK_SECRET}"
+		_ret=$?
+		echo "RET: ${_ret}"
+		${SYSRC} -qf ${MOD_CONFIG} repo+="${owner}/${reponame}" > /dev/null 2>&1
+		;;
+	lsrepo)
+		${ECHO} "${N1_COLOR}List of repo:${N0_COLOR}"
+		${GARM_CLI_CMD} repo ls
+		;;
+	delrepo)
+		echo "DEL REPO"
+		[ -z "${owner}" ] && err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}owner=${N0_COLOR}"
+		[ -z "${reponame}" ] && err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}reponame=${N0_COLOR}"
+		echo "please go to https://github.com/${owner}/${reponame}/settings/hooks and remove the webhooks for MyB"
+		ID=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT id FROM repositories WHERE owner=\"${owner}\" AND name=\"${reponame}\"" 2>/dev/null )
+		[ -z "${ID}" ] && err 1 "${N1_COLOR}${CBSD_APP}: unable to find ID for owner=\"${owner}\" AND name=\"${reponame}\""
+		${ECHO} "${N1_COLOR}${CBSD_APP}: repo delete ${N2_COLOR}${ID}${N0_COLOR}"
+		${GARM_CLI_CMD} repo delete ${ID}
+		_ret=$?
+		echo "RET: ${_ret}"
+		[ ${_ret} -eq 0 ] && ${SYSRC} -qf ${MOD_CONFIG} repo-="${owner}/${reponame}" > /dev/null 2>&1
+		;;
+	addpool)
+		REPO_COUNT=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT COUNT(id) FROM repositories;" 2>/dev/null )
+		[ -z "${REPO_COUNT}" ] && err 1 "${N1_COLOR}${CBSD_APP}: no such any repositories, please use first: ${N2_COLOR}cbsd garm mode=addpool${N0_COLOR}"
+		[ ${REPO_COUNT} -eq 0 ] && err 1 "${N1_COLOR}${CBSD_APP}: no such any repositories, please use first: ${N2_COLOR}cbsd garm mode=addpool${N0_COLOR}"
+		#[ -z "${poolname}" ] && err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}poolname=${N0_COLOR}"
+
+		get_pool_flavors
+
+		get_pool_images
+
+		get_pool_repos
+
+		owner=${repos%%/*}
+		reponame=${repos##*/}
+		ID=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT id FROM repositories WHERE owner=\"${owner}\" AND name=\"${reponame}\"" 2>/dev/null )
+		[ -z "${ID}" ] && err 1 "${N1_COLOR}${CBSD_APP}: error: unable to get ID for owner=\"${owner}\" AND name=\"${reponame}\"${N0_COLOR}"
+
+		get_pool_max_runners
+
+		get_pool_min_runners
+
+		get_pool_labels
+
+		update_pool_info
+
+		tags=
+		if [ -z "${labels}" ]; then
+			tags="mybee"
+		else
+			tags="mybee,${labels}"
+		fi
+
+		echo "garm-cli pool add --repo=${ID} --enabled=true --flavor=${flavors} --image=${images} --max-runners=${max_runners} --min-idle-runners=${min_runners} --os-arch=amd64 --os-type=linux --provider-name=mybee_external --tags=\"${tags}\""
+		${GARM_CLI_CMD} pool add --repo=${ID} --enabled=true --flavor=${flavors} --image=${images} --max-runners=${max_runners} --min-idle-runners=${min_runners} --os-arch=amd64 --os-type=linux --provider-name=mybee_external --tags="${tags}"
+		;;
+	delpool)
+		echo "DEL POOL"
+		if [ -z "${id}" ]; then
+			${GARM_CLI_CMD} pool list -a
+			err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}id=${N0_COLOR}"
+		fi
+		${GARM_CLI_CMD} pool update ${id} --runner-bootstrap-timeout=10
+		${GARM_CLI_CMD} pool update ${id} --min-idle-runners 0
+		${GARM_CLI_CMD} pool update ${id} --enabled=false
+		cbsdsqlro /usr/local/etc/garm/garm.db "SELECT name FROM instances WHERE pool_id=\"${id}\"" | while read _runner; do
+			echo "${GARM_CLI_CMD} runner delete --force-remove-runner=true ${_runner}"
+			${GARM_CLI_CMD} runner delete --force-remove-runner=true ${_runner}
+		done
+
+		${GARM_CLI_CMD} pool delete ${id}
+
+		# garm-cli runner delete --force-remove-runner=true mybee-61a90723-8a1c-41bc-95b5-8b5a6a977037 
+
+		_ret=$?
+		echo "RET: ${_ret}"
+		;;
+	*)
+		;;
+esac
+
+exit 0

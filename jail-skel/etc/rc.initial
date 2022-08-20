@@ -149,6 +149,10 @@ while : ; do
 		IP_WL="disabled"
 		${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf IP_WL="${IP_WL}" > /dev/null 2>&1
 	fi
+	if [ -z "${API_FQDN}" ]; then
+		API_FQDN="disabled"
+		${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf API_FQDN="${IP_FQDN}" > /dev/null 2>&1
+	fi
 
 	case ${PUB_WL} in
 		enabled)
@@ -166,6 +170,14 @@ while : ; do
 			IP_WL_COLOR="${W1_COLOR}"
 			;;
 	esac
+	case ${API_FQDN} in
+		disabled)
+			API_FQDN_COLOR="${W1_COLOR}"
+			;;
+		*)
+			API_FQDN_COLOR="${H2_COLOR}"
+			;;
+	esac
 
 	uplink_iface4=$( /sbin/route -n -4 get 0.0.0.0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
 	uplink_iface6=$( /sbin/route -n -6 get ::0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
@@ -178,10 +190,10 @@ while : ; do
 	fi
 
 	if [ -n "${uplink_iface4}" ]; then
-		ip4=$( /sbin/ifconfig ${uplink_iface4} | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
+		ip4=$( /sbin/ifconfig ${uplink_iface4} | /usr/bin/awk '/inet [0-9]+/{print $2}' | /usr/bin/head -n1 )
 	else
 		# route can not work in jail, looks at all
-		ip4=$( /sbin/ifconfig | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
+		ip4=$( /sbin/ifconfig | /usr/bin/awk '/inet [0-9]+/{print $2}' | /usr/bin/head -n1 )
 	fi
 
 	VPN_COLOR="${H2_COLOR}"
@@ -209,8 +221,16 @@ while : ; do
 	echo -e "    Copyright (c) 2021-2022 ConvectIX Team"
 	echo -e "    ${LCYAN}Visit: $producturl for system updates! ${N0_COLOR}"
 	echo
-	echo -e "        API address: ${W1_COLOR}http://${ip4}${N0_COLOR}"
-	[ -n "${ip6}" ] && echo -e "        API v6 address: ${W1_COLOR}http://${ip6}${N0_COLOR}"
+	case "${API_FQDN}" in
+		disabled)
+			echo -e "        API address: ${W1_COLOR}http://${ip4}${N0_COLOR}"
+			[ -n "${ip6}" ] && echo -e "        API v6 address: ${W1_COLOR}http://${ip6}${N0_COLOR}"
+			;;
+		*)
+			echo -e "        API address: ${W1_COLOR}http://${ip4} (${H3_COLOR}https://${API_FQDN}${W1_COLOR}) ${N0_COLOR}"
+			[ -n "${ip6}" ] && echo -e "        API v6 address: ${W1_COLOR}http://${ip6} (${H3_COLOR}https://${API_FQDN}${W1_COLOR})${N0_COLOR}"
+			;;
+	esac
 	echo -e "        LAN Network IPv4 Address: ${H3_COLOR}10.0.0.1${N0_COLOR}"
 	# display menu
 	echo
@@ -221,7 +241,7 @@ while : ; do
 	echo -e "${VPN_COLOR}3) Configure VPN access for API${NORMAL}   ${DGRAY}13) Add cluster node${NORMAL}"
 	echo -e "${H2_COLOR}4) Change VM network profile (${myb_net_cur_profile})${NORMAL}  ${H2_COLOR}14) Console Keyboard Map${NORMAL}"
 	echo -e "${TEMPLATE_COLOR}5) Install container template${NORMAL}     ${DGRAY}15) NFS/PVC/P9FS shares for VM${NORMAL}"
-	echo -e "${H2_COLOR}6) Shell ( warm cloud image )${NORMAL}     ${DGRAY}16) Set API FQDN ( + certbot )${NORMAL}"
+	echo -e "${H2_COLOR}6) Shell ( warm cloud image )${NORMAL}     ${H2_COLOR}16) Set API FQDN ( + certbot ) ${API_FQDN_COLOR}(${API_FQDN})${NORMAL}"
 	echo -e "${H2_COLOR}7) Reboot Server${NORMAL}                  ${H2_COLOR}17) Kubernetes clusters setting${NORMAL}"
 	echo -e "${H2_COLOR}8) Shutdown Server${NORMAL}                ${DGRAY}18) ${NORMAL}"
 	echo -e "${H2_COLOR}9) Configure SMTP${NORMAL} (${SMTP_COLOR}${SMTP_STATUS}${NORMAL})  ${DGRAY}19) ${NORMAL}"
@@ -338,6 +358,24 @@ while : ; do
 			;;
 		14)
 			/usr/sbin/kbdmap
+			;;
+		16)
+			_editfile=1		# always edit file
+			case ${API_FQDN} in
+				disabled)
+					if getyesno "Turn API FQDN/certbot ON? ('n' or '0' - leave as disabled) "; then
+						cbsd myb_api_fqdn
+					fi
+					;;
+				*)
+					if getyesno "Turn API FQDN/certbot OFF? ('n' or '0' - leave as enabled) "; then
+						API_FQDN="disabled"
+						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf API_FQDN="${API_FQDN}" > /dev/null 2>&1
+						_editfile=0
+						cbsd myb_api_fqdn mode=off
+					fi
+					;;
+			esac
 			;;
 		17)
 			/usr/local/bin/cbsd myb_k8s_settings

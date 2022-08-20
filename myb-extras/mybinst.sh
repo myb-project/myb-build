@@ -40,6 +40,7 @@ cd /cbsd
 mv /cbsd/myb-public/public /usr/local/www/
 mv /cbsd/api.d /usr/local/cbsd/modules/
 mv /cbsd/myb.d /usr/local/cbsd/modules/
+mv /cbsd/garm.d /usr/local/cbsd/modules/
 mv /cbsd/k8s.d /usr/local/cbsd/modules/
 
 [ ! -d /var/log/cbsdmq ] && mkdir -p /var/log/cbsdmq
@@ -203,6 +204,12 @@ zfsinstall.d
 api.d
 myb.d
 k8s.d
+garm.d
+EOF
+
+# for DFLY
+cat > /usr/jails/etc/cloud-init-extras.conf <<EOF
+cbsd_cloud_init=1
 EOF
 
 env NOINTER=1 /usr/local/bin/cbsd initenv

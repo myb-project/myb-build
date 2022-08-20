@@ -4,8 +4,21 @@ set -o errexit
 
 cd /
 
+# first init
+cbsd jremove jname='cpr*'
+rm -rf /var/cache/packages/*
+[ -d /usr/ports/sysutils/cbsd-mq-api ] && rm -rf /usr/ports/sysutils/cbsd-mq-api
+[ -d /usr/ports/sysutils/garm ] && rm -rf /usr/ports/sysutils/garm
+cp -a /root/ports/cbsd-mq-api /usr/ports/sysutils/
+cp -a /root/ports/garm /usr/ports/sysutils/
+
 # refresh modules
 [ -d /root/myb-build/myb-extras/myb.d ] && rm -rf /root/myb-build/myb-extras/myb.d
+[ -d /root/myb-build/myb-extras/garm.d ] && rm -rf /root/myb-build/myb-extras/garm.d
+
+cp -a /usr/local/cbsd/modules/garm.d /root/myb-build/myb-extras/
+rm -rf /root/myb-build/myb-extras/garm.d/.git || true
+
 cp -a /usr/local/cbsd/modules/myb.d /root/myb-build/myb-extras/
 rm -rf /root/myb-build/myb-extras/myb.d/.git || true
 cp -a /usr/local/cbsd/modules/k8s.d /root/myb-build/myb-extras/

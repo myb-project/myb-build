@@ -1,0 +1,103 @@
+#!/bin/sh
+# NetBSD
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/pkg/bin"
+pkg_delete py37\*
+pkg_delete python\*
+pkg_delete libffi\*
+pkg_add -v ca-certificates
+pkg_add -v curl
+pkg_add -v git
+pkg_add -v wget
+
+set -ex
+set -o pipefail
+
+CALLBACK_URL="GARM_CALLBACK_URL"
+BEARER_TOKEN="GARM_CALLBACK_TOKEN"
+DOWNLOAD_URL="GH_DOWNLOAD_URL"
+FILENAME="GH_FILENAME"
+TARGET_URL="GH_TARGET_URL"
+RUNNER_TOKEN="GH_RUNNER_TOKEN"
+RUNNER_NAME="GH_RUNNER_NAME"
+RUNNER_LABELS="GH_RUNNER_LABELS"
+
+call() {
+	PAYLOAD="$1"
+	curl -s -X POST -d "${PAYLOAD}" -H 'Accept: application/json' -H "Authorization: Bearer ${BEARER_TOKEN}" "${CALLBACK_URL}" || echo "failed to call home: exit code ($?)"
+}
+
+sendStatus() {
+	MSG="$1"
+	call "{\"status\": \"installing\", \"message\": \"$MSG\"}"
+}
+
+success() {
+	MSG="$1"
+	call "{\"status\": \"idle\", \"message\": \"$MSG\"}"
+}
+
+fail() {
+	MSG="$1"
+	call "{\"status\": \"failed\", \"message\": \"$MSG\"}"
+	exit 1
+}
+
+sync
+hostname
+
+PLATFORM=$( uname -s )
+
+ntpdate 0.freebsd.pool.ntp.org || true
+service ntpd onestart
+
+[ ! -d /usr/local/bin ] && mkdir -p /usr/local/bin
+
+sendStatus "downloading tools from ${DOWNLOAD_URL}"
+
+cd /usr/local/bin
+rehash -r || true
+hash -r || true
+wget https://myb.convectix.com/DL/gh/github-act-runner-netbsd.gz
+
+cd /etc/rc.d
+wget https://myb.convectix.com/DL/gh/github-act-runner.rc.netbsd
+
+sendStatus "extracting runner"
+cd /usr/local/bin
+gunzip /usr/local/bin/github-act-runner-netbsd.gz
+chmod +x /usr/local/bin/github-act-runner-netbsd
+mv /usr/local/bin/github-act-runner-netbsd /usr/local/bin/github-act-runner
+
+cd /etc/rc.d
+mv github-act-runner.rc.netbsd github-act-runner
+
+chmod +x /etc/rc.d/github-act-runner
+
+sendStatus "installing dependencies"
+pkg_add -v bash git || true
+
+hash -r || true
+
+sendStatus "configuring runner"
+#echo "sudo -u runner -- ./config.sh --unattended --url \"${TARGET_URL}\" --token \"${RUNNER_TOKEN}\" --name \"${RUNNER_NAME}\" --labels \"${RUNNER_LABELS}\" --ephemeral" >> /tmp/myrun.log
+#sudo -u runner -- ./config.sh --unattended --url "${TARGET_URL}" --token "${RUNNER_TOKEN}" --name "${RUNNER_NAME}" --labels "${RUNNER_LABELS}" --ephemeral || fail "failed to configure runner"
+
+# strip ' from CBSDfile ?
+RNAME=$( echo ${RUNNER_NAME} | tr -d "\"" | tr -d "'" )
+
+# workdir is relevant - settings.json!   ( --replace for overwrite )
+cd /root
+echo "/usr/local/bin/github-act-runner configure --unattended --url \"${TARGET_URL}\" --token \"${RUNNER_TOKEN}\" --name \"${RUNNER_NAME}\" --labels \"${RUNNER_LABELS}\" --ephemeral" >> /tmp/config.log
+/usr/local/bin/github-act-runner configure --unattended --url "${TARGET_URL}" --token "${RUNNER_TOKEN}" --name "${RUNNER_NAME}" --labels "${RUNNER_LABELS}" --ephemeral || fail "failed to configure runner"
+
+sendStatus "installing runner service"
+
+echo github_act_runner_enable=\"YES\" >> /etc/rc.conf
+
+sendStatus "starting service"
+#./svc.sh start || fail "failed to start service"
+/etc/rc.d/github-act-runner start
+
+success "runner successfully installed"
+
+exit 0

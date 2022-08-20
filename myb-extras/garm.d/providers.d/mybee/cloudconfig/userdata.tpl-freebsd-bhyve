@@ -1,0 +1,26 @@
+bhyve_%%JNAME%%()
+{
+
+	flavor="%%FLAVOR%%"
+
+	vm_os_type="freebsd"
+	vm_os_profile="%%PROFILE%%"
+
+	ip4_addr="DHCP"
+	ip4_gw="10.0.100.1"
+	ci_jname="${jname}"
+	ci_fqdn="${fqdn}"
+	ci_ip4_addr="${ip4_addr}"
+	ci_gw4="${ip4_gw}"
+	imgtype="zvol"
+	runasap=1
+	ssh_wait=1
+}
+
+postcreate_%%JNAME%%()
+{
+	chmod +x %%INSTALL_SRC%%
+	bscp %%INSTALL_SRC%% ${jname}:install_runner.sh
+	bexec jname=${jname} sudo /home/%%USER%%/install_runner.sh
+	rm -f %%INSTALL_SRC%%
+}

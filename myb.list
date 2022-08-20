@@ -9,8 +9,9 @@
 /usr/ports/sysutils/tmux
 /usr/ports/sysutils/genisoimage
 /usr/ports/security/py-certbot
-/usr/ports/misc/mc
 /usr/ports/mail/mutt
 /usr/ports/net/wireguard
 /usr/ports/sysutils/kubectl
 /usr/ports/sysutils/hw-probe
+/usr/ports/sysutils/garm
+/usr/ports/textproc/jq

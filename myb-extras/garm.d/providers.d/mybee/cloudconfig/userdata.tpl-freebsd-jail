@@ -1,0 +1,18 @@
+jail_%%JNAME%%()
+{
+	flavor="%%FLAVOR%%"
+	ver="native"
+	ip4_addr="DHCP"
+	host_hostname="${jname}.my.domain"
+	pkg_bootstrap=1
+	runasap=1
+	ssh_wait=1
+}
+
+postcreate_%%JNAME%%()
+{
+	chmod +x %%INSTALL_SRC%%
+	jscp %%INSTALL_SRC%% ${jname}:/tmp/install_runner.sh
+	jexec jname=${jname} /bin/sh /tmp/install_runner.sh
+	rm -f %%INSTALL_SRC%%
+}

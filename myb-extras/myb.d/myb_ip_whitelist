@@ -40,12 +40,10 @@ trap "[ -r ${TEMP_FILE} ] && ${RM_CMD} -f ${TEMP_FILE}" HUP INT ABRT BUS TERM EX
 
 . ${distdir}/subr/settings-tui-virtual.subr
 . ${distdir}/subr/tools.subr
-#. ${dialog}
 
 # disable ACL
 if [ "${mode}" = "off" ]; then
 	echo "allow all;" > ${WHITELIST_NGINX}
-#	${CAT_CMD} ${TEMP_FILE} >> ${WHITELIST_NGINX}
 	${SERVICE_CMD} nginx reload
 	exit 0
 fi
@@ -57,7 +55,7 @@ ${GREP_CMD} -v ^# ${TEMP_FILE} | ${GREP_CMD} . | ${SORT_CMD} -u > ${WHITELIST_FI
 ${ECHO} "${N1_COLOR}${CBSD_APP}: whitelist changed${N0_COLOR}"
 ${ECHO} "${N1_COLOR}Install new whitelist..${N0_COLOR}"
 ${MV_CMD} ${WHITELIST_FILE}.tmp ${WHITELIST_FILE}
-${TRUNCATE_CMD} ${WHITELIST_NGINX}
+${TRUNCATE_CMD} -s0 ${WHITELIST_NGINX}
 ${GREP_CMD} . ${WHITELIST_FILE} | while read _ip; do
 	echo "allow ${_ip};" >> ${WHITELIST_NGINX}
 done

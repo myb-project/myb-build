@@ -1,6 +1,8 @@
 # List of the allowed cbsd commands
 SECCMD="\
 ${SECCMD}
+myb_api_fqdn \
+myb_flavors_list \
 myb_ip_whitelist \
 myb_pub_whitelist \
 myb_net_profile \

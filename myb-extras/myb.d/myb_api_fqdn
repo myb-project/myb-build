@@ -1,0 +1,149 @@
+#!/usr/local/bin/cbsd
+MYARG=
+MYOPTARG="mode"
+MYDESC="Manage CBSD API FQDN/certbot"
+CBSDMODULE="myb"
+ADDHELP="
+
+${H3_COLOR}Description${N0_COLOR}:
+
+Manage nginx vhost + certbot crontab.
+
+"
+EXTHELP=
+
+. ${subrdir}/tools.subr
+mode=
+. ${subrdir}/cbsdinit.subr
+. ${subrdir}/system.subr
+
+NGINX_VHOST="/usr/local/etc/nginx/sites-available/mybee.conf"
+HTTP_TPL="/usr/local/etc/mybee/http-mybee.conf.tpl"
+HTTPS_TPL="/usr/local/etc/mybee/https-mybee.conf.tpl"
+HTTP_NGINX="/usr/local/etc/mybee/http-nginx.conf"
+HTTPS_NGINX="/usr/local/etc/mybee/https-nginx.conf"
+
+HTTPS_BOOT_TPL="/usr/local/etc/mybee/https-boot-mybee.conf.tpl"
+CERTBOT_CMD="/usr/local/bin/certbot"
+
+if [ ! -x ${CERTBOT_CMD} ]; then
+	echo "no such executable ${CERTBOT_CMD}"
+	read p
+	exit 1
+fi
+
+[ ! -d /usr/local/etc/nginx ] && ${MKDIR_CMD} -p /usr/local/etc/nginx
+[ ! -d /usr/local/etc/nginx/sites-available ] && ${MKDIR_CMD} -p /usr/local/etc/nginx/sites-available
+
+case "${mode}" in
+	off)
+		# turn off SSL
+		${CAT_CMD} ${HTTP_TPL} > ${NGINX_VHOST}
+		${CP_CMD} ${HTTP_NGINX} /usr/local/etc/nginx/nginx.conf
+		${RM_CMD} -rf /usr/local/etc/letsencrypt
+		${SERVICE_CMD} nginx reload
+		${TRUNCATE_CMD} -s0 /root/bin/certbot.sh
+		${CHMOD_CMD} +x /root/bin/certbot.sh
+		exit 0
+		;;
+esac
+
+${CAT_CMD} > /usr/local/etc/nginx/letsencrypt.conf <<EOF
+# for letsencypt
+location /.well-known/acme-challenge/ {
+	root /usr/local/www/letsencrypt/;
+}
+EOF
+
+[ ! -d /usr/local/www/letsencrypt ] && ${MKDIR_CMD} -p /usr/local/www/letsencrypt
+
+fqdn=
+ofqdn=
+tmp_choice=$( ${MKTEMP_CMD} )
+trap "${RM_CMD} -f ${tmp_choice}; exit 0" SIGHUP SIGINT SIGTERM
+
+while [ true ]; do
+	fqdn=
+	num=0
+
+	printf "Enter valid FQDN: "
+	read ofqdn
+	${SYSRC_CMD} -qf ${tmp_choice} fqdn="${ofqdn}" > /dev/null 2>&1
+	fqdn="${ofqdn}"
+	[ -n "${fqdn}" ] && break
+done
+
+trap "" SIGHUP SIGINT SIGTERM
+
+fqdn=
+if [ -r ${tmp_choice} ]; then
+	. ${tmp_choice}
+	${RM_CMD} -f ${tmp_choice}
+fi
+[ -z "${fqdn}" ] && exit 0
+
+API_FQDN="${fqdn}"
+
+# Try to apply
+# restore HTTP first
+${SED_CMD} -Ees:%%API_FQDN%%:"${API_FQDN}":g ${HTTPS_BOOT_TPL} > ${NGINX_VHOST}
+${RM_CMD} -rf /usr/local/etc/letsencrypt
+/usr/local/sbin/nginx -t
+ret=$?
+if [ ${ret} -ne 0 ]; then
+	echo "nginx configtest error. Press key to restore rollback..."
+	read p
+	${CAT_CMD} ${HTTP_TPL} > ${NGINX_VHOST}
+	${CP_CMD} ${HTTP_NGINX} /usr/local/etc/nginx/nginx.conf
+	${SERVICE_CMD} nginx reload
+	${TRUNCATE_CMD} -s0 /root/bin/certbot.sh
+	${CHMOD_CMD} +x /root/bin/certbot.sh
+	exit ${ret}
+fi
+
+${CP_CMD} ${HTTPS_NGINX} /usr/local/etc/nginx/nginx.conf
+${SERVICE_CMD} nginx restart
+/usr/local/bin/certbot -n --agree-tos --email root@${API_FQDN} --webroot -w /usr/local/www/letsencrypt certonly -d ${API_FQDN}
+ret=$?
+
+if [ ! -r /usr/local/etc/letsencrypt/live/${API_FQDN}/fullchain.pem ]; then
+	echo "Certbot error: /usr/local/bin/certbot -n --agree-tos --email root@${API_FQDN} --webroot -w /usr/local/www/letsencrypt certonly -d ${API_FQDN}"
+	echo "Press key to restore rollback..."
+	read p
+	${CAT_CMD} ${HTTP_TPL} > ${NGINX_VHOST}
+	${CP_CMD} ${HTTP_NGINX} /usr/local/etc/nginx/nginx.conf
+	${SERVICE_CMD} nginx reload
+	${TRUNCATE_CMD} -s0 /root/bin/certbot.sh
+	${CHMOD_CMD} +x /root/bin/certbot.sh
+	exit ${ret}
+fi
+
+# try to use SSL
+${SED_CMD} -Ees:%%API_FQDN%%:"${API_FQDN}":g ${HTTPS_TPL} > ${NGINX_VHOST}
+/usr/local/sbin/nginx -t
+ret=$?
+if [ ${ret} -ne 0 ]; then
+	echo "nginx configtest error. Press key to restore rollback..."
+	read p
+	${CAT_CMD} ${HTTP_TPL} > ${NGINX_VHOST}
+	${CP_CMD} ${HTTP_NGINX} /usr/local/etc/nginx/nginx.conf
+	${SERVICE_CMD} nginx reload
+	${TRUNCATE_CMD} -s0 /root/bin/certbot.sh
+	${CHMOD_CMD} +x /root/bin/certbot.sh
+	exit ${ret}
+fi
+
+# install new crontab
+${CAT_CMD} > /root/bin/certbot.sh <<EOF
+#!/bin/sh
+
+/usr/local/bin/certbot -n --agree-tos --email root@${API_FQDN} --webroot -w /usr/local/www/letsencrypt certonly -d ${API_FQDN}
+EOF
+
+${CHMOD_CMD} +x /root/bin/certbot.sh
+
+${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf API_FQDN="${API_FQDN}" > /dev/null 2>&1
+${ECHO} "${N1_COLOR}${CBSD_APP}: new VHOST, crontab and certbot installed: ${N2_COLOR}${API_FQDN}${N0_COLOR}"
+${SERVICE_CMD} nginx reload
+
+exit 0

@@ -1,5 +1,9 @@
 #!/bin/sh
 
+API_FQDN=
+
+. /etc/rc.conf
+
 # ${myb_version}
 if [ -r /usr/local/etc/mybee/version ]; then
 	. /usr/local/etc/mybee/version
@@ -35,13 +39,24 @@ fi
 if [ -r /var/db/mybee/auto_ip.conf ]; then
 	. /var/db/mybee/auto_ip.conf
 else
+	old_api_fqdn=
 	old_v4=
 	old_v6=
 fi
 
-if [ "${old_v4}" = "${ip4}" -a "${old_v6}" = "${ip6}" ]; then
-	echo "[${ip4}/${ip6}] unchanged"
-	exit 0
+changed=0
+
+if [ "${old_api_fqdn}" != "${API_FQDN}" ]; then
+	changed=1
+else
+	echo "fqdn [${old_api_fqdn}/${API_FQDN}] unchanged"
+fi
+
+if [ ${changed} -ne 1 ]; then
+	if [ "${old_v4}" = "${ip4}" -a "${old_v6}" = "${ip6}" ]; then
+		echo "[${ip4}/${ip6}] unchanged"
+		exit 0
+	fi
 fi
 
 echo "ip changed"
@@ -52,13 +67,27 @@ echo "++ ${ip6}"
 
 /usr/sbin/sysrc -qf /var/db/mybee/auto_ip.conf old_v4="${ip4}" > /dev/null 2>&1
 /usr/sbin/sysrc -qf /var/db/mybee/auto_ip.conf old_v6="${ip6}" > /dev/null 2>&1
+/usr/sbin/sysrc -qf /var/db/mybee/auto_ip.conf old_api_fqdn="${API_FQDN}" > /dev/null 2>&1
 
 # triggering/refresh services/config
 
 # API SERVICES
 # defaults
 # for API services
+
 schema="http"
+web_schema="http"
+web_address="${ip4}"
+
+case "${API_FQDN}" in
+	disabled)
+		;;
+	*.*)
+		web_schema="https"
+		web_address="${API_FQDN}"
+		;;
+esac
+
 sed -e "s:%%IP%%:${ip4}:g" \
 	-e "s:%%SCHEMA%%:${schema}:g" \
 	/usr/local/etc/mybee/cbsd-mq-api.json > /tmp/cbsd-mq-api.json.$$
@@ -79,8 +108,8 @@ else
 fi
 
 # PUBLIC_HTML
-sed -e "s:%%IP%%:${ip4}:g" \
-	-e "s:%%SCHEMA%%:${schema}:g" \
+sed -e "s:%%IP%%:${web_address}:g" \
+	-e "s:%%SCHEMA%%:${web_schema}:g" \
 	/usr/local/etc/mybee/index.html.tpl > /tmp/index.html.$$
 
 [ ! -d /usr/local/www/public ] && mkdir -p /usr/local/www/public
