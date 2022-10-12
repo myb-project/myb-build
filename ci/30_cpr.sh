@@ -14,12 +14,6 @@ dstdir=$( mktemp -d )
 echo "cbsd cpr pkglist=/root/myb-build/myb.list dstdir=${dstdir}"
 cbsd cpr pkglist=/root/myb-build/myb.list dstdir=${dstdir}
 
-if [ -d ${progdir}/cbsd ]; then
-	echo "remove old artifact dir: ${progdir}/cbsd"
-	rm -rf ${progdir}/cbsd
-fi
-
-mkdir -p ${progdir}/cbsd
 #echo "Sleep: mv ${dstdir}/* ${progdir}/cbsd/"
 #read p
 

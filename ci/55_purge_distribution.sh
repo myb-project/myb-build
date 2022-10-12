@@ -6,6 +6,5 @@ progdir="${0%/*}"			# Program directory
 progdir=$( realpath ${progdir} )
 progdir=$( dirname ${progdir} )
 
-
 # golang
-rm -f ${progdir}/cbsd/go-*.pkg
+rm -f ${progdir}/cbsd/go11-*.pkg

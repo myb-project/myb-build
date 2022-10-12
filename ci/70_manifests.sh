@@ -19,15 +19,34 @@ if [ ! -r ${SRC_ROOT}/Makefile ]; then
 fi
 
 cd ${progdir}
+if [ -d ${progdir}/myb ]; then
+	echo "remove old artifact dir: ${progdir}/myb"
+	rm -rf ${progdir}/myb
+fi
+
+mkdir ${progdir}/myb
+
 [ -r cbsd.tar ] && rm -f cbsd.tar
 # todo: prune build-deps (e.g: go)
 #rm -f cbsd/go-*.txz
-rsync -avz ${progdir}/myb-extras/ ${progdir}/cbsd/
-rsync -avz ${progdir}/jail-skel/ ${workdir}/jails-data/${jname}/
-cp -a /usr/jails/export/micro1.img ${progdir}/cbsd/
 
-[ -d ${progdir}/cbsd/jail-skel ] && rm -rf ${progdir}/cbsd/jail-skel
-cp -a ${progdir}/jail-skel ${progdir}/cbsd/
+rsync -avz ${progdir}/myb-extras/ ${progdir}/myb/
+rsync -avz ${progdir}/jail-skel/ ${workdir}/jails-data/${jname}/
+
+# in kubernetes bootsrap!
+#cp -a /usr/jails/export/micro1.img ${progdir}/myb/
+
+[ -d ${progdir}/myb/jail-skel ] && rm -rf ${progdir}/myb/jail-skel
+cp -a ${progdir}/jail-skel ${progdir}/myb/
+
+# Create myb.txz from ${progdir}/myb/
+# and copy to /cbsd/
+
+rm -rf /usr/ports/packages/All
+
+make -C /root/myb-build/ports/myb clean
+make -C /root/myb-build/ports/myb package
+cp -a /usr/ports/packages/All/myb-*.pkg ${progdir}/cbsd/
 
 tar cf cbsd.tar cbsd
 xz -T8 cbsd.tar
@@ -46,3 +65,4 @@ cp -a ${progdir}/myb-extras/rc.local ${workdir}/jails-data/${jname}-data/etc/
 #cp -a ${progdir}/bootconfig ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/bootconfig
 
 sysrc -qf ${workdir}/jails-data/${jname}-data/etc/rc.conf hostname="mybee.my.domain"
+

@@ -52,6 +52,10 @@ else
 	echo "fqdn [${old_api_fqdn}/${API_FQDN}] unchanged"
 fi
 
+# check for html page:
+index_bsize=$( /usr/bin/stat -f "%z" /usr/local/www/public/index.html 2>/dev/null )
+[ ${index_bsize} -eq 0 ] && changed=1
+
 if [ ${changed} -ne 1 ]; then
 	if [ "${old_v4}" = "${ip4}" -a "${old_v6}" = "${ip6}" ]; then
 		echo "[${ip4}/${ip6}] unchanged"
