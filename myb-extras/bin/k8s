@@ -1,6 +1,15 @@
 #!/bin/sh
 
-profile="vm-linux-cloud-kubernetes-24.conf"
+cbsd jstatus jname=micro1 > /dev/null
+ret=$?
+
+if [ ${ret} -eq 0 ]; then
+	fetch -o /tmp/micro1.img https://myb-pkg.convectix.com/micro1.img
+	cbsd jimport /tmp/micro1.img
+fi
+
+profile="vm-linux-cloud-kubernetes-25.conf"
 cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
 /root/bin/checkiso.sh check
+
 exit 0

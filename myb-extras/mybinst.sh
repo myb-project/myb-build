@@ -1,4 +1,6 @@
 #!/bin/sh
+# TODO: sync with upgrade.sh
+#
 export PATH=/usr/local/bin:/usr/local/sbin:$PATH
 clear
 service netif restart > /dev/null 2>&1
@@ -24,26 +26,47 @@ else
 	echo "[${users_num}] Default SSH ROOT access: enabled" | tee -a /var/log/mybinst.log
 fi
 echo
-cd /cbsd
-# FIND
-#tar xfz pkg-1.17.2.pkg
-#/cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg-1.17.2.pkg
-#/cbsd/usr/local/sbin/pkg-static add -f /cbsd/*.pkg
 
-# dist cbsd: put as /root/myb-build/myb-extras/cbsd-dist
-#pkg remove -y cbsd || true
-#rm -rf /usr/local/cbsd
-#rm -f /usr/local/bin/cbsd
-#mv /cbsd/cbsd-dist /usr/local/cbsd
-#make -C /usr/local/cbsd
+# Upgrade area
 
-mv /cbsd/myb-public/public /usr/local/www/
-mv /cbsd/api.d /usr/local/cbsd/modules/
-mv /cbsd/myb.d /usr/local/cbsd/modules/
-mv /cbsd/garm.d /usr/local/cbsd/modules/
-mv /cbsd/k8s.d /usr/local/cbsd/modules/
+[ ! -d /usr/local/etc/pkg/repos ] && mkdir -p /usr/local/etc/pkg/repos
+cp -a /usr/local/myb/pkg/Mybee-latest.conf /usr/local/etc/pkg/repos/
+# when no network?
+pkg info cbsd > /dev/null 2>&1
+remote_install=$?
+
+if [ ${remote_install} -eq 1 ]; then
+	echo "pkg update -f ..."
+	pkg update -f
+
+	## Remote install by list
+	install_list=$( grep -v '^#' /usr/local/myb/myb.list | sed 's:/usr/ports/::g' | while read _pkg; do
+		pkg info ${_pkg} > /dev/null 2>&1 || printf "${_pkg} "
+	done )
+	if [ -n "${install_list}" ]; then
+		echo "install dependencies: ${install_list} ..."
+		pkg install -y -f ${install_list}
+	fi
+fi
+
+[ -d /usr/local/www/public ] && rm -rf /usr/local/www/public
+cp -a /usr/local/myb/myb-public/public /usr/local/www/
+
+[ -d /usr/local/cbsd/modules/api.d ] && rm -rf /usr/local/cbsd/modules/api.d
+cp -a /usr/local/myb/api.d /usr/local/cbsd/modules/
+
+[ -d /usr/local/cbsd/modules/myb.d ] && rm -rf /usr/local/cbsd/modules/myb.d
+cp -a /usr/local/myb/myb.d /usr/local/cbsd/modules/
+
+[ -d /usr/local/cbsd/modules/garm.d ] && rm -rf /usr/local/cbsd/modules/garm.d
+cp -a /usr/local/myb/garm.d /usr/local/cbsd/modules/
+
+[ -d /usr/local/cbsd/modules/k8s.d ] && rm -rf /usr/local/cbsd/modules/k8s.d
+cp -a /usr/local/myb/k8s.d /usr/local/cbsd/modules/
 
 [ ! -d /var/log/cbsdmq ] && mkdir -p /var/log/cbsdmq
+
+## Upgrade area 
 
 echo "=== Initial MyBee setup ==="
 
@@ -128,7 +151,8 @@ sysrc \
  cloned_interfaces="bridge100" \
  ifconfig_bridge100="inet 10.0.100.1/24 up" \
  osrelease_enable="NO" \
- mybosrelease_enable="YES"
+ mybosrelease_enable="YES" \
+ cbsd_workdir="/usr/jails"
 
 if [ ${SSH_ROOT_ENABLED} -eq 0 ]; then
 	echo "extra users exist, disable SSH root login by default"
@@ -190,26 +214,25 @@ net.inet.icmp.reply_from_interface = 1
 kern.ipc.maxsockbuf = 16777216
 EOF
 
-
 rm -rf /usr/local/etc/nginx
-mv /cbsd/nginx /usr/local/etc/
+mv /usr/local/myb/nginx /usr/local/etc/
 
 [ ! -d /usr/jails/src/iso ] && mkdir -p /usr/jails/src/iso
 
 [ ! -d /usr/jails/etc ] && mkdir /usr/jails/etc
 cat > /usr/jails/etc/modules.conf <<EOF
-pkg.d
-bsdconf.d
-zfsinstall.d
-api.d
-myb.d
-k8s.d
-garm.d
+pkg.d				# MyBee auto-setup
+bsdconf.d			# MyBee auto-setup
+zfsinstall.d			# MyBee auto-setup
+api.d				# MyBee auto-setup
+myb.d				# MyBee auto-setup
+k8s.d				# MyBee auto-setup
+garm.d				# MyBee auto-setup
 EOF
 
 # for DFLY
 cat > /usr/jails/etc/cloud-init-extras.conf <<EOF
-cbsd_cloud_init=1
+cbsd_cloud_init=1		# MyBee auto-setup
 EOF
 
 env NOINTER=1 /usr/local/bin/cbsd initenv
@@ -220,34 +243,17 @@ for i in \$( egrep -E '^ifconfig_[aA-zZ]+[0-9]+="DHCP"' /etc/rc.conf | tr "_=" "
 	/sbin/dhclient \${i}
 done
 
-# restore motd
-#cp -a /cbsd/dynmotd.sh /usr/local/bin/
 truncate -s0 /etc/motd /var/run/motd /etc/motd.template
-#if ! grep -q /usr/local/bin/dynmotd.sh /etc/csh.login 2>/dev/null; then
-#	echo '/usr/local/bin/dynmotd.sh' >> /etc/csh.login
-#fi
-#if ! grep -q /usr/local/bin/dynmotd.sh /etc/profile 2>/dev/null; then
-#	echo '/usr/local/bin/dynmotd.sh' >> /etc/profile
-#fi
-
 EOF
 
-cp -a /cbsd/myb-os-release /usr/local/etc/rc.d/myb-os-release
+cp -a /usr/local/myb/myb-os-release /usr/local/etc/rc.d/myb-os-release
 
-#cp -a /cbsd/dynmotd.sh /usr/local/bin/
-truncate -s0 /etc/motd /var/run/motd /etc/motd.template
-#if ! grep -q /usr/local/bin/dynmotd.sh /etc/csh.login 2>/dev/null; then
-#	echo '/usr/local/bin/dynmotd.sh' >> /etc/csh.login
-#fi
-#if ! grep -q /usr/local/bin/dynmotd.sh /etc/profile 2>/dev/null; then
-#	echo '/usr/local/bin/dynmotd.sh' >> /etc/profile
-#fi
+cp -a /usr/local/myb/api.d/etc/api.conf ~cbsd/etc/
+cp -a /usr/local/myb/bhyve-api.conf ~cbsd/etc/
+cp -a /usr/local/myb/api.d/etc/jail-api.conf ~cbsd/etc/
 
-cp -a /usr/local/cbsd/modules/api.d/etc/api.conf ~cbsd/etc/
-cp -a /cbsd/bhyve-api.conf ~cbsd/etc/
-cp -a /usr/local/cbsd/modules/api.d/etc/jail-api.conf ~cbsd/etc/
-cp -a /cbsd/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_images.json
-cp -a /cbsd/syslog.conf /etc/syslog.conf
+cp -a /usr/local/myb/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_images.json
+cp -a /usr/local/myb/syslog.conf /etc/syslog.conf
 
 sysrc -qf ~cbsd/etc/api.conf server_list="${hostname}"
 sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="10.0.100.1"
@@ -296,66 +302,15 @@ chown cbsd:cbsd ~cbsd/etc/api.conf ~cbsd/etc/k8s.conf /usr/jails/etc/k8world.con
 mkdir -p /var/db/cbsd-api /usr/jails/var/db/api/map
 chown -R cbsd:cbsd /var/db/cbsd-api /usr/jails/var/db/api/map
 
-# tmp: update CBSD code to latest
-#echo "/usr/local/bin/rsync -avz /clonos/bases/cbsd/ /usr/local/cbsd/"
-#/usr/local/bin/cbsd initenv inter=0
-
-#mv /clonos/bases/base_* /usr/jails/basejail/
-#/usr/local/bin/cbsd register_base arch=amd64 target_arch=amd64 ver=12.0 stable=0
-#chflags -R noschg /clonos
-#echo "Importing cbsdpuppet jail..."
-#/usr/local/bin/cbsd version
-#/usr/local/bin/cbsd jimport fs_feat=0 jname=/clonos/bases/cbsdpuppet1.img
-#/usr/local/bin/cbsd jset jname=cbsdpuppet1 protected=1
-#/usr/local/bin/cbsd jset jname=cbsdpuppet1 hidden=1
-#rm -rf /clonos
-
 mkdir /var/coredumps
 chmod 0777 /var/coredumps
-
-# temporary fix perms for CBSD 12.0.2 (remove it after 12.0.3 released)
-#mkdir /usr/jails/formfile
-#chown cbsd:cbsd /usr/jails/formfile
-#chmod 0775 /usr/jails/formfile
 
 uplink_iface4=$( /sbin/route -n -4 get 0.0.0.0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
 ip=$( /sbin/ifconfig ${uplink_iface4} | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
 
-#cat > /usr/local/etc/cbsd-mq-api.json <<EOF
-#{
-#    "cbsdenv": "/usr/jails",
-#    "cbsdcolor": false,
-#    "broker": "beanstalkd",
-#    "logfile": "/dev/stdout",
-#    "recomendation": "/usr/local/cbsd/modules/api.d/misc/recomendation.sh",
-#    "freejname": "/usr/local/cbsd/modules/api.d/misc/freejname.sh",
-#    "server_url": "http://${ip}",
-#    "cloud_images_list": "/usr/local/etc/cbsd_api_cloud_images.json",
-#    "iso_images_list": "/usr/local/etc/cbsd_api_iso_images.json",
-#    "beanstalkd": {
-#      "uri": "127.0.0.1:11300",
-#      "tube": "cbsd_zpool1",
-#      "reply_tube_prefix": "cbsd_zpool1_result_id",
-#      "reconnect_timeout": 5,
-#      "reserve_timeout": 5,
-#      "publish_timeout": 5,
-#      "logdir": "/var/log/cbsdmq"
-#    }
-#}
-#EOF
-
-#sed -i '' -Ees:%%IP%%:${ip}:g /usr/local/www/public/index.html
-
 # set IP for API/public.html/..
-/root/bin/auto_ip.sh
-
-#cat > /etc/issue <<EOF
-#
-# === Welcome to MyBee 21.10 ===
-# * API: http://${ip}
-# * SSH: ${ip}
-#
-#EOF
+rsync -avz /usr/local/myb/bin/ /root/bin/
+[ -x /root/bin/auto_ip.sh ] && /root/bin/auto_ip.sh
 
 cat > ~cbsd/etc/bhyve-default-default.conf <<EOF
 skip_bhyve_init_warning=1
@@ -365,15 +320,6 @@ interface="bridge100"
 EOF
 
 mkdir /var/nginx /usr/local/www/status
-rsync -avz /cbsd/bin/ /root/bin/
-
-#cat > /etc/rc.local <<EOF
-#export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
-#/sbin/ifconfig bridge0 create
-#/sbin/ifconfig bridge0 10.0.0.1/24 up
-##/usr/sbin/valectl -h vale1:vether1
-#/root/bin/update_cluster_status.sh
-#EOF
 
 [ ! -d /usr/local/etc/sudoers.d ] && mkdir -m 0755 -p /usr/local/etc/sudoers.d
 cat > /usr/local/etc/sudoers.d/10_wheelgroup <<EOF
@@ -381,7 +327,7 @@ cat > /usr/local/etc/sudoers.d/10_wheelgroup <<EOF
 EOF
 
 chmod 0440 /usr/local/etc/sudoers.d/10_wheelgroup
-/usr/local/bin/rsync -avz /cbsd/jail-skel/ /
+/usr/local/bin/rsync -avz /usr/local/myb/jail-skel/ /
 
 # k8s
 mkdir -p /var/db/cbsd-k8s /usr/jails/var/db/k8s/map
@@ -393,8 +339,9 @@ ln -sf /root/bin/update_cluster_status.sh /usr/jails/share/bhyve-system-default/
 ln -sf /root/bin/route_del.sh /usr/jails/share/bhyve-system-default/master_poststop.d/route_del.sh
 ln -sf /root/bin/route_add.sh /usr/jails/share/bhyve-system-default/master_poststart.d/route_add.sh
 
-/usr/local/bin/cbsd jimport /cbsd/micro1.img
-rm -f /cbsd/micro1.img
+# in kubernetes bootsrap
+#/usr/local/bin/cbsd jimport /usr/local/myb/micro1.img
+#rm -f /usr/local/myb/micro1.img
 
 /usr/local/cbsd/sudoexec/initenv > /var/log/cbsd_init2.log 2>&1
 

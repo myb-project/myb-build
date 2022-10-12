@@ -110,12 +110,6 @@ EOF
 	${MKDIR_CMD} -m 0777 /usr/jails/jails-data/${myjail}-data/tmp
 	${CHMOD_CMD} u+t /usr/jails/jails-data/${myjail}-data/tmp
 
-	# autoresolv
-	if [ -n "${server_kubeconfig_domain}" ]; then
-		. /etc/rc.conf		# get "$ip4"
-		echo "${ip4} ${k8s_name} ${k8s_name}.${server_kubeconfig_domain}" >> /usr/jails/jails-data/${myjail}-data/etc/hosts
-	fi
-
 	echo "expose jname=${myjail} in=${ssh_console_port} out=22 outaddr=${int_br_ip} mode=add"
 	expose jname=${myjail} in=${ssh_console_port} out=22 mode=add outaddr=${int_br_ip}
 }

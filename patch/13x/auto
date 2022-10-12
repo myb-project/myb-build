@@ -540,9 +540,9 @@ tar xfz pkg.pkg
 /cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg.pkg
 /cbsd/usr/local/sbin/pkg-static add -f /cbsd/*.pkg
 
-/usr/local/bin/rsync -avz /cbsd/jail-skel/ /
+/usr/local/bin/rsync -avz /usr/local/myb/jail-skel/ /
 [ ! -d /root/bin ] && mkdir -p /root/bin
-/usr/local/bin/rsync -avz /cbsd/myb-extras/bin/ /root/bin/
+/usr/local/bin/rsync -avz /usr/local/myb/myb-extras/bin/ /root/bin/
 
 cat > /etc/rc.initial <<EOF
 /usr/bin/tail -f /var/log/mybinit.log
@@ -552,11 +552,11 @@ touch /var/log/mybinit.log
 
 [ ! -d /usr/local/etc/rc.d ] && mkdir -p /usr/local/etc/rc.d
 cat > /usr/local/etc/rc.d/mybinst.sh <<EOF
-if [ -r /cbsd/mybinst.sh ]; then
+if [ ! -r /cbsd/mybinst.sh ]; then
 	export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+	cp -a /usr/local/myb/mybinst.sh /cbsd/mybinst.sh
 	chmod +x /cbsd/mybinst.sh
-	/bin/mv /cbsd/mybinst.sh /cbsd/mybinst
-	/usr/sbin/daemon -o /var/log/mybinit.log /cbsd/mybinst
+	/usr/sbin/daemon -o /var/log/mybinit.log /cbsd/mybinst.sh
 fi
 EOF
 chmod +x /usr/local/etc/rc.d/mybinst.sh

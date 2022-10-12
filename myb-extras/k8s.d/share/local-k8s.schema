@@ -13,19 +13,19 @@ created="TIMESTAMP DATE DEFAULT (datetime('now','localtime'))"
 cluster="TEXT DEFAULT \"k8s-bhyve.io\""
 master_hostname="TEXT DEFAULT \"master.k8s-bhyve.io\""
 # https://github.com/kubernetes/kubernetes/releases
-k8s_ver="TEXT DEFAULT \"v1.24.0\""
+k8s_ver="TEXT DEFAULT \"v1.24.4\""
 # https://github.com/etcd-io/etcd
-etcd_ver="TEXT DEFAULT \"v3.5.3\""
+etcd_ver="TEXT DEFAULT \"v3.5.4\""
 # https://github.com/containerd/containerd/releases
-containerd_ver="TEXT DEFAULT \"1.6.2\""
+containerd_ver="TEXT DEFAULT \"1.6.8\""
 # https://github.com/flannel-io/flannel/releases
-flannel_ver="TEXT DEFAULT \"v0.17.0\""
+flannel_ver="TEXT DEFAULT \"v0.19.1\""
 # https://github.com/coredns/coredns/releases
-coredns_ver="TEXT DEFAULT \"v1.9.1\""
+coredns_ver="TEXT DEFAULT \"v1.9.3\""
 # https://github.com/kubernetes-sigs/cri-tools/releases
-cri_tools_ver="TEXT DEFAULT \"v1.24.0\""
+cri_tools_ver="TEXT DEFAULT \"v1.24.2\""
 # https://github.com/opencontainers/runc/releases
-runc_ver="TEXT DEFAULT \"v1.1.1\""
+runc_ver="TEXT DEFAULT \"v1.1.3\""
 # https://github.com/containernetworking/plugins/releases
 cni_plugins_linux_ver="TEXT DEFAULT \"v1.1.1\""
 init_master_ips="TEXT DEFAULT \"DHCP\""
