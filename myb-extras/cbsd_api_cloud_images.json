@@ -1,12 +1,14 @@
 {
   "images": [
     "alma9",
+    "arch",
     "centos7",
     "centos8",
     "centos9",
     "debian10",
     "debian11",
     "dflybsd6",
+    "fedora36",
     "freebsd13_ufs",
     "freebsd13_zfs",
     "freebsd14_ufs",
@@ -18,7 +20,7 @@
     "k8s",
     "netbsd9",
     "openbsd7",
-    "opnsense21",
+    "opnsense22",
     "oracle7",
     "oracle8",
     "oracle9",

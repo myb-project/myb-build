@@ -5,7 +5,7 @@
 
 cd /
 
-if [ 1 -gt 2 ]; then
+#if [ 1 -gt 2 ]; then
 
 set -o errexit
 
@@ -52,7 +52,7 @@ rm -rf /root/myb-build/myb-extras/api.d/.git || true
 
 /root/myb-build/ci/35_cpr-micro.sh
 
-fi
+#fi
 
 # half build
 /root/myb-build/ci/40_jail.sh

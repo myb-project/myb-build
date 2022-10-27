@@ -1,12 +1,16 @@
 #!/bin/sh
 
 API_FQDN=
-
 . /etc/rc.conf
 
+if [ -z "${myb_default_network}" ]; then
+	myb_default_network="10.0.101"
+	sysrc -qf /etc/rc.conf myb_default_network="${myb_default_network}" > /dev/null 2>&1
+fi
+
 # ${myb_version}
-if [ -r /usr/local/etc/mybee/version ]; then
-	. /usr/local/etc/mybee/version
+if [ -r /usr/local/myb/version ]; then
+	. /usr/local/myb/version
 fi
 
 [ -z "${myb_version}" ] && myb_version="unknown"
@@ -53,8 +57,13 @@ else
 fi
 
 # check for html page:
-index_bsize=$( /usr/bin/stat -f "%z" /usr/local/www/public/index.html 2>/dev/null )
-[ ${index_bsize} -eq 0 ] && changed=1
+if [ -r /usr/local/www/public/index.html ]; then
+	index_bsize=$( /usr/bin/stat -f "%z" /usr/local/www/public/index.html 2>/dev/null )
+	[ ${index_bsize} -eq 0 ] && changed=1
+else
+	# no such html
+	changed=1
+fi
 
 if [ ${changed} -ne 1 ]; then
 	if [ "${old_v4}" = "${ip4}" -a "${old_v6}" = "${ip6}" ]; then
@@ -94,7 +103,7 @@ esac
 
 sed -e "s:%%IP%%:${ip4}:g" \
 	-e "s:%%SCHEMA%%:${schema}:g" \
-	/usr/local/etc/mybee/cbsd-mq-api.json > /tmp/cbsd-mq-api.json.$$
+	/usr/local/myb/cbsd-mq-api.json > /tmp/cbsd-mq-api.json.$$
 
 if [ ! -r /usr/local/etc/cbsd-mq-api.json ]; then
 	echo "install new api config"
@@ -114,7 +123,7 @@ fi
 # PUBLIC_HTML
 sed -e "s:%%IP%%:${web_address}:g" \
 	-e "s:%%SCHEMA%%:${web_schema}:g" \
-	/usr/local/etc/mybee/index.html.tpl > /tmp/index.html.$$
+	/usr/local/cbsd/modules/myb.d/share/nginx-tpl/index.html.tpl > /tmp/index.html.$$
 
 [ ! -d /usr/local/www/public ] && mkdir -p /usr/local/www/public
 if [ ! -r /usr/local/www/public/index.html ]; then
@@ -180,7 +189,7 @@ fi
 nodeippool_default=
 
 if [ -z "${nodepool4}" ]; then
-	nodeippool_default="10.0.100.0/24"
+	nodeippool_default="${myb_default_network}.0/24"
 else
 	nodeippool_default="${nodepool4}"
 fi

@@ -2,30 +2,39 @@
 # TODO: sync with upgrade.sh
 #
 export PATH=/usr/local/bin:/usr/local/sbin:$PATH
-clear
-service netif restart > /dev/null 2>&1
-service routing restart > /dev/null 2>&1
-echo
-echo " *** [MyBee post-install script] *** "
-echo
-
-# depending on the presence of an unprivileged extra user,
-# we allow or deny remote login for root
-# For FreeBSD 13.1-RELEASE we have 27 users after install
-#nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/usr/sbin/nologin
-#cbsd:*:150:150::0:0:Cbsd user:/usr/jails:/bin/sh
-#cyrus:*:60:60::0:0:the cyrus mail server:/nonexistent:/usr/sbin/nologin
-#messagebus:*:556:556::0:0:D-BUS Daemon User:/nonexistent:/usr/sbin/nologin
-# 30
-users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
-if [ "${users_num}" != "30" ]; then
-	SSH_ROOT_ENABLED=0
-	echo "[${users_num}] Default SSH ROOT access: disabled" | tee -a /var/log/mybinst.log
-else
-	SSH_ROOT_ENABLED=1
-	echo "[${users_num}] Default SSH ROOT access: enabled" | tee -a /var/log/mybinst.log
+myb_firstboot="1"				# already initialized ?
+[ -r /etc/rc.conf ] && . /etc/rc.conf
+if [ -z "${myb_default_network}" ]; then
+	myb_default_network="10.0.101"
+	sysrc -qf /etc/rc.conf myb_default_network="${myb_default_network}" > /dev/null 2>&1
 fi
-echo
+
+if [ ${myb_firstboot} -eq 1 ]; then
+	clear
+	service netif restart > /dev/null 2>&1
+	service routing restart > /dev/null 2>&1
+	echo
+	echo " *** [MyBee post-install script] *** "
+	echo
+
+	# depending on the presence of an unprivileged extra user,
+	# we allow or deny remote login for root
+	# For FreeBSD 13.1-RELEASE we have 27 users after install + 'cbsd' = 28
+	#nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/usr/sbin/nologin
+	#cbsd:*:150:150::0:0:Cbsd user:/usr/jails:/bin/sh
+	#cyrus:*:60:60::0:0:the cyrus mail server:/nonexistent:/usr/sbin/nologin
+	#messagebus:*:556:556::0:0:D-BUS Daemon User:/nonexistent:/usr/sbin/nologin
+	# 30
+	users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
+	if [ "${users_num}" != "28" ]; then
+		SSH_ROOT_ENABLED=0
+		echo "[${users_num}] Default SSH ROOT access: disabled" | tee -a /var/log/mybinst.log
+	else
+		SSH_ROOT_ENABLED=1
+		echo "[${users_num}] Default SSH ROOT access: enabled" | tee -a /var/log/mybinst.log
+	fi
+	echo
+fi
 
 # Upgrade area
 
@@ -36,21 +45,29 @@ pkg info cbsd > /dev/null 2>&1
 remote_install=$?
 
 if [ ${remote_install} -eq 1 ]; then
-	echo "pkg update -f ..."
+	echo "Remote upgrade: pkg update -f ..."
 	pkg update -f
+fi
 
-	## Remote install by list
+## Remote install by list
+if [ -r /usr/local/myb/myb.list ]; then
+
 	install_list=$( grep -v '^#' /usr/local/myb/myb.list | sed 's:/usr/ports/::g' | while read _pkg; do
 		pkg info ${_pkg} > /dev/null 2>&1 || printf "${_pkg} "
 	done )
+
 	if [ -n "${install_list}" ]; then
-		echo "install dependencies: ${install_list} ..."
-		pkg install -y -f ${install_list}
+		echo "Remote upgrade: install dependencies: ${install_list} ..."
+		#pkg install -r MyBee-latest -y -f cbsd ${install_list}
+		pkg install -y -f cbsd ${install_list}
+		pkg upgrade -r MyBee-latest -y
 	fi
 fi
 
-[ -d /usr/local/www/public ] && rm -rf /usr/local/www/public
-cp -a /usr/local/myb/myb-public/public /usr/local/www/
+if [ ${myb_firstboot} -eq 0 ]; then
+	# upgrade from repo
+	pkg upgrade -r MyBee-latest -y
+fi
 
 [ -d /usr/local/cbsd/modules/api.d ] && rm -rf /usr/local/cbsd/modules/api.d
 cp -a /usr/local/myb/api.d /usr/local/cbsd/modules/
@@ -66,7 +83,7 @@ cp -a /usr/local/myb/k8s.d /usr/local/cbsd/modules/
 
 [ ! -d /var/log/cbsdmq ] && mkdir -p /var/log/cbsdmq
 
-## Upgrade area 
+## Upgrade area
 
 echo "=== Initial MyBee setup ==="
 
@@ -91,7 +108,7 @@ fi
 ip4_addr=$( ifconfig ${auto_iface} 2>/dev/null | /usr/bin/awk '/inet [0-9]+/ { print $2}' | /usr/bin/head -n 1 )
 
 ## when no IP?
-[ -z "${ip4_addr}" ] && ip4_addr="10.0.100.1"
+[ -z "${ip4_addr}" ] && ip4_addr="${myb_default_network}.1"
 
 echo "CBSD setup"
 
@@ -101,7 +118,7 @@ cat > /tmp/initenv.conf <<EOF
 nodename="${hostname}"
 nodeip="${ip4_addr}"
 jnameserver="8.8.8.8 8.8.4.4"
-nodeippool="10.0.100.0/24"
+nodeippool="${myb_default_network}.0/24"
 natip="${ip4_addr}"
 nat_enable="pf"
 mdtmp="8"
@@ -149,17 +166,19 @@ sysrc \
  sendmail_outbound_enable="NO" \
  sendmail_msp_queue_enable="NO" \
  cloned_interfaces="bridge100" \
- ifconfig_bridge100="inet 10.0.100.1/24 up" \
+ ifconfig_bridge100="inet ${myb_default_network}.1/24 up" \
  osrelease_enable="NO" \
  mybosrelease_enable="YES" \
  cbsd_workdir="/usr/jails"
 
-if [ ${SSH_ROOT_ENABLED} -eq 0 ]; then
-	echo "extra users exist, disable SSH root login by default"
-	sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=no -oPort=22" > /dev/null 2>&1
-else
-	echo "extra users does not exist, enable SSH root login by default"
-	sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" > /dev/null 2>&1
+if [ ${myb_firstboot} -eq 1 ]; then
+	if [ ${SSH_ROOT_ENABLED} -eq 0 ]; then
+		echo "extra users exist, disable SSH root login by default"
+		sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=no -oPort=22" > /dev/null 2>&1
+	else
+		echo "extra users does not exist, enable SSH root login by default"
+		sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" > /dev/null 2>&1
+	fi
 fi
 
 cat > /etc/sysctl.conf <<EOF
@@ -214,8 +233,10 @@ net.inet.icmp.reply_from_interface = 1
 kern.ipc.maxsockbuf = 16777216
 EOF
 
-rm -rf /usr/local/etc/nginx
-mv /usr/local/myb/nginx /usr/local/etc/
+if [ ${myb_firstboot} -eq 1 ]; then
+	rm -rf /usr/local/etc/nginx
+	mv /usr/local/myb/nginx /usr/local/etc/
+fi
 
 [ ! -d /usr/jails/src/iso ] && mkdir -p /usr/jails/src/iso
 
@@ -256,7 +277,7 @@ cp -a /usr/local/myb/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_im
 cp -a /usr/local/myb/syslog.conf /etc/syslog.conf
 
 sysrc -qf ~cbsd/etc/api.conf server_list="${hostname}"
-sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="10.0.100.1"
+sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="${myb_default_network}.1"
 
 tube_name=$( echo ${hostname} | tr '.' '_' )
 
@@ -284,7 +305,7 @@ ZFS_K8S="${ZPOOL}/k8s"
 ZFS_K8S_MNT="/k8s"
 api_env_name="env"
 server_list="${tube_name}"
-PV_SPEC_SERVER="10.0.100.1"
+PV_SPEC_SERVER="${myb_default_network}.1"
 
 ZPOOL="zroot"
 ZFS_K8S="\${ZPOOL}/k8s"
@@ -299,27 +320,31 @@ K8S_MK_JAIL="1"
 EOF
 
 chown cbsd:cbsd ~cbsd/etc/api.conf ~cbsd/etc/k8s.conf /usr/jails/etc/k8world.conf
-mkdir -p /var/db/cbsd-api /usr/jails/var/db/api/map
+[ ! -d /var/db/cbsd-api ] && mkdir -p /var/db/cbsd-api 
+[ ! -d /usr/jails/var/db/api/map ] && mkdir -p /usr/jails/var/db/api/map
 chown -R cbsd:cbsd /var/db/cbsd-api /usr/jails/var/db/api/map
 
-mkdir /var/coredumps
+[ ! -d /var/coredumps ] && mkdir /var/coredumps
 chmod 0777 /var/coredumps
 
 uplink_iface4=$( /sbin/route -n -4 get 0.0.0.0 2>/dev/null | /usr/bin/awk '/interface/{print $2}' )
 ip=$( /sbin/ifconfig ${uplink_iface4} | /usr/bin/awk '/inet [0-9]+/{print $2}'| /usr/bin/head -n1 )
 
 # set IP for API/public.html/..
+[ ! -d /usr/local/www/public ] && mkdir -p /usr/local/www/public
+rsync -avz --exclude nubectl /usr/local/myb/myb-public/public/ /usr/local/www/public/
 rsync -avz /usr/local/myb/bin/ /root/bin/
 [ -x /root/bin/auto_ip.sh ] && /root/bin/auto_ip.sh
 
 cat > ~cbsd/etc/bhyve-default-default.conf <<EOF
 skip_bhyve_init_warning=1
 create_cbsdsystem_tap=0
-ci_gw4="10.0.100.1"
+ci_gw4="${myb_default_network}.1"
 interface="bridge100"
 EOF
 
-mkdir /var/nginx /usr/local/www/status
+[ ! -d /var/nginx ] && mkdir /var/nginx
+[ ! -d /usr/local/www/status ] && mkdir /usr/local/www/status
 
 [ ! -d /usr/local/etc/sudoers.d ] && mkdir -m 0755 -p /usr/local/etc/sudoers.d
 cat > /usr/local/etc/sudoers.d/10_wheelgroup <<EOF
@@ -347,9 +372,6 @@ ln -sf /root/bin/route_add.sh /usr/jails/share/bhyve-system-default/master_posts
 
 /usr/local/cbsd/modules/k8s.d/scripts/install.sh up > /dev/null 2>&1
 
-cd /
-rm -rf /cbsd
-
 grep -q 'nameserver' /etc/resolv.conf
 ret=$?
 if [ ${ret} -ne 0 ]; then
@@ -361,9 +383,23 @@ nameserver 2001:4860:4860::8844
 EOF
 fi
 
+sysrc -qf /etc/rc.conf myb_firstboot="0" > /dev/null 2>&1
 
+if [ ${myb_firstboot} -eq 1 ]; then
 /usr/bin/wall <<EOF
   MyBee cluster setup complete, reboot host!
 EOF
 sync
 /sbin/reboot
+
+else
+	/usr/sbin/service cbsd-mq-api stop
+	/usr/sbin/service cbsd-mq-router stop
+	/usr/sbin/service beanstalkd stop
+	# 
+	/usr/sbin/service beanstalkd start
+	/usr/sbin/service cbsd-mq-router start
+	/usr/sbin/service cbsd-mq-api start
+fi
+
+exit 0

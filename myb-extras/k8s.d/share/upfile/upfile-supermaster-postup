@@ -17,7 +17,7 @@ postup_%%JNAME%%()
 	${ECHO} "${N1_COLOR}KUBERNETES API AVAILABLE: ${N2_COLOR}${_server}${N0_COLOR}" | tee -a ${_message}
 	echo
 	${ECHO} "${N1_COLOR}Info: ${N0_COLOR}" | tee -a ${_message}
-	${ECHO} "${N1_COLOR}   kubectl --kubeconfig ${N2_COLOR}${myworkdir}/config${N1_COLOR} get nodes${N0_COLOR}" | tee -a ${_message}
+	${ECHO} "${N1_COLOR}   kubectl --kubeconfig ${N2_COLOR}${myworkdir}/config${N1_COLOR} get nodes -o wide${N0_COLOR}" | tee -a ${_message}
 	${ECHO} "${N1_COLOR}   env KUBECONFIG=${N2_COLOR}${myworkdir}.config${N1_COLOR} kubectl cluster-info${N0_COLOR}" | tee -a ${_message}
 	${ECHO} "${N1_COLOR}   (use kubectl --kubeconig or KUBECONFIG env or copy ${N2_COLOR}${myworkdir}/config${N1_COLOR} to /root/.kube/config for global)${N0_COLOR}" | tee -a ${_message}
 

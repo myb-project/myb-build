@@ -110,8 +110,8 @@ hwprobe
 # Set our operating platform
 PLATFORM="MyBee"
 # ${myb_version}
-if [ -r /usr/local/etc/mybee/version ]; then
-	. /usr/local/etc/mybee/version
+if [ -r /usr/local/myb/version ]; then
+	. /usr/local/myb/version
 fi
 
 [ -z "${myb_version}" ] && myb_version="unknown"
@@ -215,11 +215,15 @@ while : ; do
 	${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf ip6="${ip6}" > /dev/null
 
 	echo
-	echo "Welcome to ${PLATFORM} ${myb_version} console."
+	if [ -n "${myb_build}" ]; then
+		echo "Welcome to ${PLATFORM} ${myb_version} (build: ${myb_build}) console."
+	else
+		echo "Welcome to ${PLATFORM} ${myb_version} console."
+	fi
 	echo
 	echo -e "    Copyright (c) 2013-2022 CBSD Team"
 	echo -e "    Copyright (c) 2021-2022 ConvectIX Team"
-	echo -e "    ${LCYAN}Visit: $producturl for system updates! ${N0_COLOR}"
+	echo -e "    ${LCYAN}Visit: $producturl for system updates! ${H3_COLOR}(or type 'u'+Enter)${N0_COLOR}"
 	echo
 	case "${API_FQDN}" in
 		disabled)
@@ -379,6 +383,9 @@ while : ; do
 			;;
 		17)
 			/usr/local/bin/cbsd myb_k8s_settings
+			;;
+		u)	
+			/root/bin/upgrade.sh
 			;;
 		*)
 			;;

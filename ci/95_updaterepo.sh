@@ -19,6 +19,13 @@ echo "pkg: $PKG_CMD"
 grep -v '^#' ${progdir}/myb.list | sed 's:/usr/ports/::g' > ${progdir}/myb/myb.list
 
 rm -rf /usr/ports/packages/All
+DT=$( date "+%Y%m%d%H%M" )
+. ${progdir}/myb-extras/version
+VER="${myb_version}.${DT}"
+sed "s:%%VER%%:${VER}:g" /root/myb-build/ports/myb/Makefile-tpl > /root/myb-build/ports/myb/Makefile
+
+sysrc -qf ${progdir}/myb-extras/version myb_build="${DT}"
+
 make -C /root/myb-build/ports/myb clean
 make -C /root/myb-build/ports/myb package
 cd /usr/ports/packages/All

@@ -1,4 +1,5 @@
 #!/usr/local/bin/cbsd
+DIST_MODULE_PATH="${distmoduledir}/myb.d"
 MYARG=
 MYOPTARG="mode"
 MYDESC="Manage CBSD API FQDN/certbot"
@@ -18,12 +19,12 @@ mode=
 . ${subrdir}/system.subr
 
 NGINX_VHOST="/usr/local/etc/nginx/sites-available/mybee.conf"
-HTTP_TPL="/usr/local/etc/mybee/http-mybee.conf.tpl"
-HTTPS_TPL="/usr/local/etc/mybee/https-mybee.conf.tpl"
-HTTP_NGINX="/usr/local/etc/mybee/http-nginx.conf"
-HTTPS_NGINX="/usr/local/etc/mybee/https-nginx.conf"
+HTTP_TPL="${DIST_MODULE_PATH}/share/nginx-tpl/http-mybee.conf.tpl"
+HTTPS_TPL="${DIST_MODULE_PATH}/share/nginx-tpl/https-mybee.conf.tpl"
+HTTP_NGINX="${DIST_MODULE_PATH}/share/nginx-tpl/http-nginx.conf"
+HTTPS_NGINX=""${DIST_MODULE_PATH}/share/nginx-tpl/https-nginx.conf"
 
-HTTPS_BOOT_TPL="/usr/local/etc/mybee/https-boot-mybee.conf.tpl"
+HTTPS_BOOT_TPL=""${DIST_MODULE_PATH}/share/nginx-tpl/https-boot-mybee.conf.tpl"
 CERTBOT_CMD="/usr/local/bin/certbot"
 
 if [ ! -x ${CERTBOT_CMD} ]; then
