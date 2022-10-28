@@ -385,6 +385,9 @@ fi
 
 sysrc -qf /etc/rc.conf myb_firstboot="0" > /dev/null 2>&1
 
+# legacy firstboot instasll
+[ -r /usr/local/etc/rc.d/mybinst.sh ] && rm -f /usr/local/etc/rc.d/mybinst.sh
+
 if [ ${myb_firstboot} -eq 1 ]; then
 /usr/bin/wall <<EOF
   MyBee cluster setup complete, reboot host!

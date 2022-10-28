@@ -552,12 +552,8 @@ touch /var/log/mybinit.log
 
 [ ! -d /usr/local/etc/rc.d ] && mkdir -p /usr/local/etc/rc.d
 cat > /usr/local/etc/rc.d/mybinst.sh <<EOF
-if [ ! -r /cbsd/mybinst.sh ]; then
-	export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
-	cp -a /usr/local/myb/mybinst.sh /cbsd/mybinst.sh
-	chmod +x /cbsd/mybinst.sh
-	/usr/sbin/daemon -o /var/log/mybinit.log /cbsd/mybinst.sh
-fi
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+/usr/sbin/daemon -o /var/log/mybinit.log /bin/sh /usr/local/myb/mybinst.sh
 EOF
 chmod +x /usr/local/etc/rc.d/mybinst.sh
 #CBSD
