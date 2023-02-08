@@ -1,7 +1,7 @@
 # global postup
 postup()
 {
-	local _tmp_yaml="pv.yaml"
+	local _tmp_yaml="pvc.yaml"
 
 	if [ -n "${SERVER_KUBECONFIG}" -a "${SERVER_KUBECONFIG}" != "0" ]; then
 		${ECHO} "${N1_COLOR} * Replace server in kubeconfig: ${N2_COLOR}${SERVER_KUBECONFIG}${N0_COLOR}"
@@ -16,26 +16,45 @@ postup()
 	# tmp, Gi postfix in tpl
 	PV_SPEC_CAPACITY_STORAGE=$( echo ${PV_ENABLE} | ${TR_CMD} -d [:alpha:] )
 
-	${ECHO} "${N1_COLOR}create PV...${N0_COLOR}" | tee -a ${_message}
-	sed -Ees:%%PV_METADATA_NAME%%:${PV_METADATA_NAME}:g \
-		-Ees:%%PV_SPEC_CAPACITY_STORAGE%%:${PV_SPEC_CAPACITY_STORAGE}:g \
-		-Ees:%%PV_SPEC_VOLUMEMODE%%:${PV_SPEC_VOLUMEMODE}:g \
-		-Ees:%%PV_SPEC_STORAGECLASSNAME%%:${PV_SPEC_STORAGECLASSNAME}:g \
-		-Ees:%%PV_SPEC_NFS_PATH%%:${PV_SPEC_NFS_PATH}:g \
-		-Ees:%%PV_SPEC_SERVER%%:${PV_SPEC_SERVER}:g \
-		-Ees:%%PV_SPEC_ACCESSMODES%%:${PV_SPEC_ACCESSMODES}:g \
-		/usr/local/cbsd/modules/k8s.d/scripts/nfs-pv.yaml > ${_tmp_yaml}
+	# notes:
+	# helm .tgz obtained from:
+	#  helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+	#  helm repo update
+	#  helm pull nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
 
 	if [ -n "${SERVER_KUBECONFIG}" -a "${SERVER_KUBECONFIG}" != "0" ]; then
 		${SED_CMD} "s# server:.*# server: https://${SERVER_KUBECONFIG}#g" ${myworkdir}/config > ${myworkdir}/config.new
 	fi
 
-	echo "kubectl --kubeconfig ${myworkdir}/config apply -f ${_tmp_yaml}"
+	${ECHO} "${N1_COLOR}create PV...${N0_COLOR}" | tee -a ${_message}
+
 	set -o xtrace
-	kubectl --kubeconfig ${myworkdir}/config apply -f ${_tmp_yaml}
-	set +o xtrace
+	kubectl --kubeconfig ${myworkdir}/config create ns nfsstorage
+	helm --kubeconfig ${myworkdir}/config install nfs-subdir-external-provisioner /usr/local/cbsd/modules/k8s.d/share/helm/nfs-subdir-external-provisioner-4.0.17.tgz --set nfs.server=${PV_SPEC_SERVER} --set nfs.path=${PV_SPEC_NFS_PATH} -n nfsstorage
+
+	#${ECHO} "${N1_COLOR}create PV...${N0_COLOR}" | tee -a ${_message}
+	#sed -Ees:%%PV_METADATA_NAME%%:${PV_METADATA_NAME}:g \
+	#	-Ees:%%PV_SPEC_CAPACITY_STORAGE%%:${PV_SPEC_CAPACITY_STORAGE}:g \
+	#	-Ees:%%PV_SPEC_VOLUMEMODE%%:${PV_SPEC_VOLUMEMODE}:g \
+	#	-Ees:%%PV_SPEC_STORAGECLASSNAME%%:${PV_SPEC_STORAGECLASSNAME}:g \
+	#	-Ees:%%PV_SPEC_NFS_PATH%%:${PV_SPEC_NFS_PATH}:g \
+	#	-Ees:%%PV_SPEC_SERVER%%:${PV_SPEC_SERVER}:g \
+	#	-Ees:%%PV_SPEC_ACCESSMODES%%:${PV_SPEC_ACCESSMODES}:g \
+	#	/usr/local/cbsd/modules/k8s.d/scripts/nfs-pv.yaml > ${_tmp_yaml}
+
+	#echo "kubectl --kubeconfig ${myworkdir}/config apply -f ${_tmp_yaml}"
+	#set -o xtrace
+	#kubectl --kubeconfig ${myworkdir}/config apply -f ${_tmp_yaml}
+	#set +o xtrace
 	kubectl --kubeconfig ${myworkdir}/config get pv | tee -a ${_message}
+	kubectl --kubeconfig ${myworkdir}/config get all -n nfsstorage | tee -a ${_message}
+	kubectl --kubeconfig ${myworkdir}/config get storageclass | tee -a ${_message}
+	kubectl --kubeconfig ${myworkdir}/config get storageclass nfs-client -o yaml | tee -a ${_message}
+
+	sed -Ees:%%PV_SPEC_CAPACITY_STORAGE%%:${PV_SPEC_CAPACITY_STORAGE}:g \
+		/usr/local/cbsd/modules/k8s.d/scripts/nfs-pvc.yaml > ${_tmp_yaml}
+
 	# debug
-	${CP_CMD} ${_tmp_yaml} /tmp/nfs-pv-last.yaml
+	${CP_CMD} ${_tmp_yaml} /tmp/nfs-pvc-last.yaml
 	${RM_CMD} -f ${_tmp_yaml} message.txt
 }

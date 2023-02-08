@@ -49,7 +49,7 @@ else
 	echo "${search_str}" >> /etc/exports
 fi
 
-search_str="${root}${path} "
+search_str="^${path} ${hosts} "
 if grep -q "${search_str}" /etc/exports; then
 	# path exist
 	cp -a /etc/exports /etc/exports.bak

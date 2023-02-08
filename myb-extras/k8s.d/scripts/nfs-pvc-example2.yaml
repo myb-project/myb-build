@@ -5,14 +5,26 @@
 # ReadWriteMany - The volume can be mounted to multiple pods in read and write mode.
 # A restriction on the type of access can be imposed by the type of the store itself. For example, RBD or iSCSI storage does not support ReadWriteMany access.
 #  One PV can only be used by one PVC.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+
+parameters:
+  server: 10.0.100.1
+  path: /k8s/pv/master1
+  readOnly: "false"
+  archiveOnDelete: "false"
+provisioner: nfs
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: nfs-pvc
+  name: nfs-pvc-test
 spec:
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 10Gi
-

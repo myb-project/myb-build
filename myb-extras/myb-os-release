@@ -21,7 +21,7 @@ mybosrelease_start()
 {
 	local _version _version_id
 
-	. /usr/local/etc/mybee/version
+	. /usr/local/myb/version
 
 	check_startmsgs && echo -n "Updating ${osrelease_file} "
 	_version=$(freebsd-version -u)

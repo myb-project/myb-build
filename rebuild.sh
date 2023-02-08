@@ -18,8 +18,8 @@ cp -a /root/myb-build/ports/cbsd-mq-api /usr/ports/sysutils/
 cp -a /root/myb-build/ports/garm /usr/ports/sysutils/
 
 # devel CBSD
-[ -d /usr/ports/sysutils/cbsd ] && rm -rf /usr/ports/sysutils/cbsd
-cp -a /root/myb-build/ports/cbsd /usr/ports/sysutils/
+#[ -d /usr/ports/sysutils/cbsd ] && rm -rf /usr/ports/sysutils/cbsd
+#cp -a /root/myb-build/ports/cbsd /usr/ports/sysutils/
 
 # refresh modules
 [ -d /root/myb-build/myb-extras/myb.d ] && rm -rf /root/myb-build/myb-extras/myb.d

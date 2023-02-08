@@ -141,9 +141,9 @@ if [ ${gold} -eq 1 ]; then
 	develop=1
 	VM_OS_PROFILE="cloud-ubuntuserver-amd64-22.04"
 	IMGTYPE="md"
-	master_vm_imgsize="6g"
+	master_vm_imgsize="7g"
 else
-	VM_OS_PROFILE="cloud-kubernetes-25"
+	VM_OS_PROFILE="cloud-kubernetes-26"
 	IMGTYPE="zvol"
 fi
 

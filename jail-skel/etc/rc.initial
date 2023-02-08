@@ -4,9 +4,14 @@ export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 # /etc/rc.initial
 #
 
+unset SOCKS5_PROXY
+
 . /etc/rc.conf
 . /etc/rc.subr
 export workdir="${cbsd_workdir}"
+
+[ -n "${SOCKS5_PROXY}" ] && export SOCKS5_PROXY="${SOCKS5_PROXY}"
+
 . /usr/local/cbsd/cbsd.conf
 . /usr/local/cbsd/subr/ansiicolor.subr
 . /usr/jails/nc.inventory
@@ -211,6 +216,10 @@ while : ; do
 		SMTP_STATUS="unconfigured"
 	fi
 
+	if [ -n "${SOCKS5_PROXY}" ]; then
+		PROXY_ARGS="${H2_COLOR}${SOCKS5_PROXY}${N0_COLOR}"
+	fi
+
 	${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf ip4="${ip4}" > /dev/null
 	${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf ip6="${ip6}" > /dev/null
 
@@ -221,8 +230,8 @@ while : ; do
 		echo "Welcome to ${PLATFORM} ${myb_version} console."
 	fi
 	echo
-	echo -e "    Copyright (c) 2013-2022 CBSD Team"
-	echo -e "    Copyright (c) 2021-2022 ConvectIX Team"
+	echo -e "    Copyright (c) 2013-2023 CBSD Team"
+	echo -e "    Copyright (c) 2021-2023 MyBee Team"
 	echo -e "    ${LCYAN}Visit: $producturl for system updates! ${H3_COLOR}(or type 'u'+Enter)${N0_COLOR}"
 	echo
 	case "${API_FQDN}" in
@@ -236,6 +245,9 @@ while : ; do
 			;;
 	esac
 	echo -e "        LAN Network IPv4 Address: ${H3_COLOR}10.0.0.1${N0_COLOR}"
+	if [ -n "${SOCKS5_PROXY}" ]; then
+		echo -e "        Proxy enabled: ${PROXY_ARGS}"
+	fi
 	# display menu
 	echo
 	echo "Console Menu"

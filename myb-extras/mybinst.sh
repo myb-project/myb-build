@@ -6,7 +6,7 @@ myb_firstboot="1"				# already initialized ?
 [ -r /etc/rc.conf ] && . /etc/rc.conf
 if [ -z "${myb_default_network}" ]; then
 	myb_default_network="10.0.101"
-	sysrc -qf /etc/rc.conf myb_default_network="${myb_default_network}" > /dev/null 2>&1
+	/usr/sbin/sysrc -qf /etc/rc.conf myb_default_network="${myb_default_network}" > /dev/null 2>&1
 fi
 
 if [ ${myb_firstboot} -eq 1 ]; then
@@ -26,7 +26,7 @@ if [ ${myb_firstboot} -eq 1 ]; then
 	#messagebus:*:556:556::0:0:D-BUS Daemon User:/nonexistent:/usr/sbin/nologin
 	# 30
 	users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
-	if [ "${users_num}" != "28" ]; then
+	if [ "${users_num}" != "30" ]; then
 		SSH_ROOT_ENABLED=0
 		echo "[${users_num}] Default SSH ROOT access: disabled" | tee -a /var/log/mybinst.log
 	else
@@ -34,6 +34,119 @@ if [ ${myb_firstboot} -eq 1 ]; then
 		echo "[${users_num}] Default SSH ROOT access: enabled" | tee -a /var/log/mybinst.log
 	fi
 	echo
+
+
+
+	if [ "${myb_manage_loaderconf}" != "NO" ]; then
+		# tune loader.conf
+		cat >> /boot/loader.conf <<EOF
+loader_menu_title="Welcome to MyBee Project"
+
+#vfs.zfs.arc_max = "512M"
+aesni_load="YES"
+ipfw_load="YES"
+net.inet.ip.fw.default_to_accept=1
+cpuctl_load="YES"
+pf_load="YES"
+vmm_load="YES"
+kern.racct.enable=1
+ipfw_nat_load="YES"
+libalias_load="YES"
+sem_load="YES"
+coretemp_load="YES"
+cc_htcp_load="YES"
+#aio_load="YES"
+
+kern.ipc.semmnu=120
+kern.ipc.semume=40
+kern.ipc.semmns=240
+kern.ipc.semmni=40
+kern.ipc.shmmaxpgs=65536
+
+net.inet.tcp.syncache.hashsize=1024
+net.inet.tcp.syncache.bucketlimit=512
+net.inet.tcp.syncache.cachelimit=65536
+net.inet.tcp.hostcache.hashsize=16384
+net.inet.tcp.hostcache.bucketlimit=100
+net.inet.tcp.hostcache.cachelimit=65536
+
+kern.nbuf=128000
+net.inet.tcp.tcbhashsize=524288
+net.inet.tcp.hostcache.bucketlimit=120
+net.inet.tcp.tcbhashsize=131072
+
+impi_load="YES"
+accf_data_load="YES"
+accf_dns_load="YES"
+accf_http_load="YES"
+
+vm.pmap.pti="0"
+hw.ibrs_disable="1"
+crypto_load="YES"
+
+# 
+if_bnxt_load="YES"
+if_qlnxe_load="YES"
+
+### Use next-gen MRSAS drivers in place of MFI for device supporting it
+# This solves lot of [mfi] COMMAND 0x... TIMEOUT AFTER ## SECONDS
+hw.mfi.mrsas_enable="1"
+
+### Tune some global values ###
+hw.usb.no_pf="1"        # Disable USB packet filtering
+
+# Load The DPDK Longest Prefix Match (LPM) modules
+dpdk_lpm4_load="YES"
+dpdk_lpm6_load="YES"
+
+# Load DXR: IPv4 lookup algo
+fib_dxr_load="YES"
+
+# Loading newest Intel microcode
+cpu_microcode_load="YES"
+cpu_microcode_name="/boot/firmware/intel-ucode.bin"
+
+### Intel NIC tuning ###
+# https://bsdrp.net/documentation/technical_docs/performance#nic_drivers_tuning
+# Don't limit the maximum of number of received packets to process at a time
+hw.igb.rx_process_limit="-1"
+hw.em.rx_process_limit="-1"
+hw.ix.rx_process_limit="-1"
+# Allow unsupported SFP
+hw.ix.unsupported_sfp="1"
+hw.ix.allow_unsupported_sfp="1"
+
+### Chelsio NIC tuning ###
+# Prevent to reserve ASIC ressources unused on a router/firewall,
+# improve performance when we will reach 10Mpps or more
+hw.cxgbe.toecaps_allowed="0"
+hw.cxgbe.rdmacaps_allowed="0"
+hw.cxgbe.iscsicaps_allowed="0"
+hw.cxgbe.fcoecaps_allowed="0"
+
+# Under network heavy usage, network critical traffic (mainly
+# non-RSS traffic like ARP, LACP) could be droped and flaping LACP links.
+# To mitigate this situation, Chelsio could reserves one TX queue for
+# non-RSS traffic with this tuneable:
+# hw.cxgbe.rsrv_noflowq="1"
+# But compensate the number of TX queue by increasing it by one.
+# As example, if you had 8 queues, uses now 9:
+# hw.cxgbe.ntxq="9"
+
+### link tunning ###
+# Increase interface send queue length
+# lagg user: This value should be at minimum the sum of txd buffer of each NIC in the lagg
+# hw.ix.txd: 2048 by default, then use x4 here (lagg with 4 members)
+net.link.ifqmaxlen="16384"
+
+# Avoid message netisr_register: epair requested queue limit 688128 capped to net.isr.maxqlimit 1024
+net.isr.maxqlimit=1000000
+
+# Use all cores for netisr processing
+net.isr.maxthreads=-1
+EOF
+	fi
+
 fi
 
 # Upgrade area
@@ -87,7 +200,7 @@ cp -a /usr/local/myb/k8s.d /usr/local/cbsd/modules/
 
 echo "=== Initial MyBee setup ==="
 
-hostname=$( sysrc -n 'hostname' )
+hostname=$( /usr/sbin/sysrc -n hostname 2>/dev/null | awk '{printf $1}' )
 
 auto_iface=$( /sbin/route -n get 0.0.0.0 | /usr/bin/awk '/interface/{print $2}' )
 
@@ -145,9 +258,8 @@ export workdir=/usr/jails
 /usr/local/cbsd/sudoexec/initenv /tmp/initenv.conf >> /var/log/cbsd_init.log 2>&1
 
 #  sshd_flags="-oUseDNS=no -oPermitRootLogin=without-password -oPort=22" \
-sysrc \
+/usr/sbin/sysrc \
  netwait_enable="YES" \
- nginx_enable="YES" \
  cbsdd_enable="YES" \
  clear_tmp_enable="YES" \
  beanstalkd_enable="YES" \
@@ -171,13 +283,17 @@ sysrc \
  mybosrelease_enable="YES" \
  cbsd_workdir="/usr/jails"
 
+if [ "${myb_manage_nginx}" != "NO" ]; then
+	/usr/sbin/sysrc nginx_enable="YES"
+fi
+
 if [ ${myb_firstboot} -eq 1 ]; then
 	if [ ${SSH_ROOT_ENABLED} -eq 0 ]; then
 		echo "extra users exist, disable SSH root login by default"
-		sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=no -oPort=22" > /dev/null 2>&1
+		/usr/sbin/sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=no -oPort=22" > /dev/null 2>&1
 	else
 		echo "extra users does not exist, enable SSH root login by default"
-		sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" > /dev/null 2>&1
+		/usr/sbin/sysrc -qf /etc/rc.conf sshd_flags="-oUseDNS=no -oPermitRootLogin=yes -oPort=22" > /dev/null 2>&1
 	fi
 fi
 
@@ -233,9 +349,11 @@ net.inet.icmp.reply_from_interface = 1
 kern.ipc.maxsockbuf = 16777216
 EOF
 
-if [ ${myb_firstboot} -eq 1 ]; then
-	rm -rf /usr/local/etc/nginx
-	mv /usr/local/myb/nginx /usr/local/etc/
+if [ "$myb_manage_nginx}" != "NO" ]; then
+	if [ ${myb_firstboot} -eq 1 ]; then
+		rm -rf /usr/local/etc/nginx
+		mv /usr/local/myb/nginx /usr/local/etc/
+	fi
 fi
 
 [ ! -d /usr/jails/src/iso ] && mkdir -p /usr/jails/src/iso
@@ -258,6 +376,7 @@ EOF
 
 env NOINTER=1 /usr/local/bin/cbsd initenv
 
+if [ "${myb_manage_rclocal}" != "NO" ]; then
 cat > /etc/rc.local << EOF
 # insurance for DHCP-based ifaces
 for i in \$( egrep -E '^ifconfig_[aA-zZ]+[0-9]+="DHCP"' /etc/rc.conf | tr "_=" " " | awk '{printf \$2" "}' ); do
@@ -266,6 +385,7 @@ done
 
 truncate -s0 /etc/motd /var/run/motd /etc/motd.template
 EOF
+fi
 
 cp -a /usr/local/myb/myb-os-release /usr/local/etc/rc.d/myb-os-release
 
@@ -276,8 +396,8 @@ cp -a /usr/local/myb/api.d/etc/jail-api.conf ~cbsd/etc/
 cp -a /usr/local/myb/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_images.json
 cp -a /usr/local/myb/syslog.conf /etc/syslog.conf
 
-sysrc -qf ~cbsd/etc/api.conf server_list="${hostname}"
-sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="${myb_default_network}.1"
+/usr/sbin/sysrc -qf ~cbsd/etc/api.conf server_list="${hostname}"
+/usr/sbin/sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="${myb_default_network}.1"
 
 tube_name=$( echo ${hostname} | tr '.' '_' )
 
@@ -343,16 +463,20 @@ ci_gw4="${myb_default_network}.1"
 interface="bridge100"
 EOF
 
-[ ! -d /var/nginx ] && mkdir /var/nginx
+if [ "${myb_manage_nginx}" != "NO" ]; then
+	[ ! -d /var/nginx ] && mkdir /var/nginx
+fi
 [ ! -d /usr/local/www/status ] && mkdir /usr/local/www/status
 
-[ ! -d /usr/local/etc/sudoers.d ] && mkdir -m 0755 -p /usr/local/etc/sudoers.d
-cat > /usr/local/etc/sudoers.d/10_wheelgroup <<EOF
+if [ "${myb_manage_sudo}" != "NO" ]; then
+	[ ! -d /usr/local/etc/sudoers.d ] && mkdir -m 0755 -p /usr/local/etc/sudoers.d
+	cat > /usr/local/etc/sudoers.d/10_wheelgroup <<EOF
 %wheel ALL=(ALL) NOPASSWD: ALL
 EOF
 
 chmod 0440 /usr/local/etc/sudoers.d/10_wheelgroup
 /usr/local/bin/rsync -avz /usr/local/myb/jail-skel/ /
+fi
 
 # k8s
 mkdir -p /var/db/cbsd-k8s /usr/jails/var/db/k8s/map
@@ -372,18 +496,126 @@ ln -sf /root/bin/route_add.sh /usr/jails/share/bhyve-system-default/master_posts
 
 /usr/local/cbsd/modules/k8s.d/scripts/install.sh up > /dev/null 2>&1
 
-grep -q 'nameserver' /etc/resolv.conf
-ret=$?
-if [ ${ret} -ne 0 ]; then
-	cat >> /etc/resolv.conf <<EOF
+if [ "${myb_manage_resolv}" != "NO" ]; then
+	grep -q 'nameserver' /etc/resolv.conf
+	ret=$?
+	if [ ${ret} -ne 0 ]; then
+		cat >> /etc/resolv.conf <<EOF
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 nameserver 2001:4860:4860::8888
 nameserver 2001:4860:4860::8844
 EOF
+	fi
 fi
 
-sysrc -qf /etc/rc.conf myb_firstboot="0" > /dev/null 2>&1
+/usr/sbin/sysrc -qf /etc/rc.conf myb_firstboot="0" > /dev/null 2>&1
+
+if [ "${myb_manage_loaderconf}" != "NO" ]; then
+	### LOADER.CONF - todo: external helper + dynamic drv finder
+	sysrc -qf /boot/loader.conf loader_menu_title="Welcome to MyBee Project"
+
+	#vfs.zfs.arc_max = "512M"
+	sysrc -qf /boot/loader.conf aesni_load="YES"
+	sysrc -qf /boot/loader.conf ipfw_load="YES"
+	sysrc -qf /boot/loader.conf net.inet.ip.fw.default_to_accept=1
+	sysrc -qf /boot/loader.conf cpuctl_load="YES"
+	sysrc -qf /boot/loader.conf pf_load="YES"
+	sysrc -qf /boot/loader.conf vmm_load="YES"
+	sysrc -qf /boot/loader.conf kern.racct.enable=1
+	sysrc -qf /boot/loader.conf ipfw_nat_load="YES"
+	sysrc -qf /boot/loader.conf libalias_load="YES"
+	sysrc -qf /boot/loader.conf sem_load="YES"
+	sysrc -qf /boot/loader.conf coretemp_load="YES"
+	sysrc -qf /boot/loader.conf cc_htcp_load="YES"
+	#aio_load="YES"
+
+	# sysrc: hw.cxgbe.fcoecaps_allowed: name contains characters not allowed in shell (dot)
+	#sysrc -qf /boot/loader.conf kern.ipc.semmnu=120
+	#sysrc -qf /boot/loader.conf kern.ipc.semume=40
+	#sysrc -qf /boot/loader.conf kern.ipc.semmns=240
+	#sysrc -qf /boot/loader.conf kern.ipc.semmni=40
+	#sysrc -qf /boot/loader.conf kern.ipc.shmmaxpgs=65536
+
+	#sysrc -qf /boot/loader.conf net.inet.tcp.syncache.hashsize=1024
+	#sysrc -qf /boot/loader.conf net.inet.tcp.syncache.bucketlimit=512
+	#sysrc -qf /boot/loader.conf net.inet.tcp.syncache.cachelimit=65536
+	#sysrc -qf /boot/loader.conf net.inet.tcp.hostcache.hashsize=16384
+	#sysrc -qf /boot/loader.conf net.inet.tcp.hostcache.bucketlimit=100
+	#sysrc -qf /boot/loader.conf net.inet.tcp.hostcache.cachelimit=65536
+
+	#sysrc -qf /boot/loader.conf kern.nbuf=128000
+	#sysrc -qf /boot/loader.conf net.inet.tcp.tcbhashsize=524288
+	#sysrc -qf /boot/loader.conf net.inet.tcp.hostcache.bucketlimit=120
+	#sysrc -qf /boot/loader.conf net.inet.tcp.tcbhashsize=131072
+	sysrc -qf /boot/loader.conf impi_load="YES"
+	sysrc -qf /boot/loader.conf accf_data_load="YES"
+	sysrc -qf /boot/loader.conf accf_dns_load="YES"
+	sysrc -qf /boot/loader.conf accf_http_load="YES"
+
+	#sysrc -qf /boot/loader.conf vm.pmap.pti="0"
+	#sysrc -qf /boot/loader.conf hw.ibrs_disable="1"
+	sysrc -qf /boot/loader.conf crypto_load="YES"
+
+	sysrc -qf /boot/loader.conf if_bnxt_load="YES"
+	sysrc -qf /boot/loader.conf if_qlnxe_load="YES"
+
+	### Use next-gen MRSAS drivers in place of MFI for device supporting it
+	# This solves lot of [mfi] COMMAND 0x... TIMEOUT AFTER ## SECONDS
+	#sysrc -qf /boot/loader.conf hw.mfi.mrsas_enable="1"
+
+	### Tune some global values ###
+	#sysrc -qf /boot/loader.conf hw.usb.no_pf="1"        # Disable USB packet filtering
+
+	# Load The DPDK Longest Prefix Match (LPM) modules
+	#sysrc -qf /boot/loader.conf dpdk_lpm4_load="YES"
+	#sysrc -qf /boot/loader.conf dpdk_lpm6_load="YES"
+
+	# Load DXR: IPv4 lookup algo
+	sysrc -qf /boot/loader.conf fib_dxr_load="YES"
+
+	# Loading newest Intel microcode
+	sysrc -qf /boot/loader.conf cpu_microcode_load="YES"
+	sysrc -qf /boot/loader.conf cpu_microcode_name="/boot/firmware/intel-ucode.bin"
+
+	### Intel NIC tuning ###
+	# https://bsdrp.net/documentation/technical_docs/performance#nic_drivers_tuning
+	# Don't limit the maximum of number of received packets to process at a time
+	#sysrc -qf /boot/loader.conf hw.igb.rx_process_limit="-1"
+	#sysrc -qf /boot/loader.conf hw.em.rx_process_limit="-1"
+	#sysrc -qf /boot/loader.conf hw.ix.rx_process_limit="-1"
+	# Allow unsupported SFP
+	#sysrc -qf /boot/loader.conf hw.ix.unsupported_sfp="1"
+	#sysrc -qf /boot/loader.conf hw.ix.allow_unsupported_sfp="1"
+
+	### Chelsio NIC tuning ###
+	# Prevent to reserve ASIC ressources unused on a router/firewall,
+	# improve performance when we will reach 10Mpps or more
+	#sysrc -qf /boot/loader.conf hw.cxgbe.toecaps_allowed="0"
+	#sysrc -qf /boot/loader.conf hw.cxgbe.rdmacaps_allowed="0"
+	#sysrc -qf /boot/loader.conf hw.cxgbe.iscsicaps_allowed="0"
+	#sysrc -qf /boot/loader.conf hw.cxgbe.fcoecaps_allowed="0"
+
+	# Under network heavy usage, network critical traffic (mainly
+	# non-RSS traffic like ARP, LACP) could be droped and flaping LACP links.
+	# To mitigate this situation, Chelsio could reserves one TX queue for
+	# non-RSS traffic with this tuneable:
+	# hw.cxgbe.rsrv_noflowq="1"
+	# But compensate the number of TX queue by increasing it by one.
+	# As example, if you had 8 queues, uses now 9:
+	# hw.cxgbe.ntxq="9"
+
+	### link tunning ###
+	# Increase interface send queue length
+	# lagg user: This value should be at minimum the sum of txd buffer of each NIC in the lagg
+	# hw.ix.txd: 2048 by default, then use x4 here (lagg with 4 members)
+	#sysrc -qf /boot/loader.conf net.link.ifqmaxlen="16384"
+
+	# Avoid message netisr_register: epair requested queue limit 688128 capped to net.isr.maxqlimit 1024
+	#sysrc -qf /boot/loader.conf net.isr.maxqlimit="1000000"
+	#sysrc -qf /boot/loader.conf net.isr.maxthreads="-1"
+	####
+fi
 
 # legacy firstboot instasll
 [ -r /usr/local/etc/rc.d/mybinst.sh ] && rm -f /usr/local/etc/rc.d/mybinst.sh
