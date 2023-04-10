@@ -7,4 +7,4 @@ progdir=$( realpath ${progdir} )
 progdir=$( dirname ${progdir} )
 
 # golang
-rm -f ${progdir}/cbsd/go11-*.pkg
+rm -f ${progdir}/cbsd/go11-*.pkg ${progdir}/cbsd/go12-*.pkg ${progdir}/cbsd/go13-*.pkg 

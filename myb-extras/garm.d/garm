@@ -584,8 +584,8 @@ case "${mode}" in
 		[ -z "${owner}" ] && err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}owner=${N0_COLOR}"
 		[ -z "${reponame}" ] && err 1 "${N1_COLOR}${CBSD_APP}: please add: ${N2_COLOR}reponame=${N0_COLOR}"
 		echo "please go to https://github.com/${owner}/${reponame}/settings/hooks and remove the webhooks for MyB"
-		ID=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT id FROM repositories WHERE owner=\"${owner}\" AND name=\"${reponame}\"" 2>/dev/null )
-		[ -z "${ID}" ] && err 1 "${N1_COLOR}${CBSD_APP}: unable to find ID for owner=\"${owner}\" AND name=\"${reponame}\""
+		ID=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT id FROM repositories WHERE owner='${owner}' AND name='${reponame}'" 2>/dev/null )
+		[ -z "${ID}" ] && err 1 "${N1_COLOR}${CBSD_APP}: unable to find ID for owner='${owner}' AND name='${reponame}'"
 		${ECHO} "${N1_COLOR}${CBSD_APP}: repo delete ${N2_COLOR}${ID}${N0_COLOR}"
 		${GARM_CLI_CMD} repo delete ${ID}
 		_ret=$?
@@ -606,8 +606,8 @@ case "${mode}" in
 
 		owner=${repos%%/*}
 		reponame=${repos##*/}
-		ID=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT id FROM repositories WHERE owner=\"${owner}\" AND name=\"${reponame}\"" 2>/dev/null )
-		[ -z "${ID}" ] && err 1 "${N1_COLOR}${CBSD_APP}: error: unable to get ID for owner=\"${owner}\" AND name=\"${reponame}\"${N0_COLOR}"
+		ID=$( cbsdsqlro /usr/local/etc/garm/garm.db "SELECT id FROM repositories WHERE owner='${owner}' AND name='${reponame}'" 2>/dev/null )
+		[ -z "${ID}" ] && err 1 "${N1_COLOR}${CBSD_APP}: error: unable to get ID for owner='${owner}' AND name='${reponame}'${N0_COLOR}"
 
 		get_pool_max_runners
 
@@ -624,7 +624,7 @@ case "${mode}" in
 			tags="mybee,${labels}"
 		fi
 
-		echo "garm-cli pool add --repo=${ID} --enabled=true --flavor=${flavors} --image=${images} --max-runners=${max_runners} --min-idle-runners=${min_runners} --os-arch=amd64 --os-type=linux --provider-name=mybee_external --tags=\"${tags}\""
+		echo "garm-cli pool add --repo=${ID} --enabled=true --flavor=${flavors} --image=${images} --max-runners=${max_runners} --min-idle-runners=${min_runners} --os-arch=amd64 --os-type=linux --provider-name=mybee_external --tags='${tags}'"
 		${GARM_CLI_CMD} pool add --repo=${ID} --enabled=true --flavor=${flavors} --image=${images} --max-runners=${max_runners} --min-idle-runners=${min_runners} --os-arch=amd64 --os-type=linux --provider-name=mybee_external --tags="${tags}"
 		;;
 	delpool)
@@ -636,7 +636,7 @@ case "${mode}" in
 		${GARM_CLI_CMD} pool update ${id} --runner-bootstrap-timeout=10
 		${GARM_CLI_CMD} pool update ${id} --min-idle-runners 0
 		${GARM_CLI_CMD} pool update ${id} --enabled=false
-		cbsdsqlro /usr/local/etc/garm/garm.db "SELECT name FROM instances WHERE pool_id=\"${id}\"" | while read _runner; do
+		cbsdsqlro /usr/local/etc/garm/garm.db "SELECT name FROM instances WHERE pool_id='${id}'" | while read _runner; do
 			echo "${GARM_CLI_CMD} runner delete --force-remove-runner=true ${_runner}"
 			${GARM_CLI_CMD} runner delete --force-remove-runner=true ${_runner}
 		done

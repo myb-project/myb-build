@@ -12,7 +12,13 @@ ECHO="echo -e"
 
 check="jail alma9 centos7 centos8 centos9 debian10 debian11 dflybsd6 fedora36 fedora37 freebsd13_ufs freebsd13_zfs freebsd14_ufs freebsd14_zfs freefire14_ufs freepbx ghostbsd22 homeass kali2022 k8s netbsd9 openbsd7 opnsense22 oracle7 oracle8 oracle9 rocky8 rocky9 ubuntu20 ubuntu22 ubuntu22_vdi"
 
-jail_iso="/usr/jails/basejail/base_amd64_amd64_13.1/bin/sh"
+if [ -z "${ver}" -o "${ver}" = "native" ]; then
+	tmpver=$( uname -r )
+	ver=${tmpver%%-*}
+	unset tmpver
+fi
+
+jail_iso="/usr/jails/basejail/base_amd64_amd64_${ver}/bin/sh"
 alma9_iso="/usr/jails/src/iso/cbsd-cloud-Alma-9.1-x86_64-cloud.raw"
 centos7_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-7.9.0-x86_64-cloud.raw"
 centos8_iso="/usr/jails/src/iso/cbsd-cloud-CentOS-stream-8-20221125-x86_64-cloud.raw"
@@ -23,7 +29,7 @@ oracle7_iso="/usr/jails/src/iso/cbsd-cloud-Oracle-7.9.0-x86_64-cloud.raw"
 oracle8_iso="/usr/jails/src/iso/cbsd-cloud-Oracle-8.6.0-x86_64-cloud.raw"
 oracle9_iso="/usr/jails/src/iso/cbsd-cloud-Oracle-9.1.0-x86_64-cloud.raw"
 ubuntu20_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Ubuntu-x86-20.04.2.raw"
-ubuntu22_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Ubuntu-x86-22.04.01.raw"
+ubuntu22_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Ubuntu-x86-22.04.03.raw"
 ubuntu22_vdi_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Ubuntu-vdi-x86-22.04.raw"
 debian10_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Debian-x86-10.9.1.raw"
 debian11_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Debian-x86-11.6.1.raw"
@@ -39,7 +45,7 @@ freepbx_iso="/usr/jails/src/iso/cbsd-cloud-FreePBX-16.0-x86_64-cloud.raw"
 ghostbsd22_iso="/usr/jails/src/iso/cbsd-cloud-GhostBSD-ufs-x64-22.11-RELEASE-amd64.raw"
 homeass_iso="/usr/jails/src/iso/cbsd-cloud-cloud-HomeAssistant-8.raw"
 kali2022_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Kali-2022-amd64.raw"
-k8s_iso="/usr/jails/src/iso/cbsd-cloud-cloud-kubernetes-26.0.2.raw"
+k8s_iso="/usr/jails/src/iso/cbsd-cloud-cloud-kubernetes-26.0.3.raw"
 openbsd7_iso="/usr/jails/src/iso/cbsd-cloud-openbsd-72.raw"
 netbsd9_iso="/usr/jails/src/iso/cbsd-cloud-netbsd-9.3.raw"
 opnsense22_iso="/usr/jails/src/iso/cbsd-cloud-OPNSense-22.7-RELEASE-amd64.raw"

@@ -1,0 +1,68 @@
+#!/bin/sh
+
+# PROVIDE: garm
+# REQUIRE: NETWORK
+# BEFORE:  DAEMON
+
+. /etc/rc.subr
+
+name="garm"
+desc="GitHub Actions Runners Manager"
+rcvar="garm_enable"
+pidfile="/var/run/${name}.pid"
+daemon_pidfile="/var/run/${name}-daemon.pid"
+logdir="/var/log/${name}"
+logfile="${logdir}/garm.log"
+command="%%PREFIX%%/bin/garm"
+garm_config=${garm_config-"%%PREFIX%%/etc/garm/config.toml"}
+required_files="${garm_config}"
+garm_user=${garm_user-"root"}
+garm_flags=${garm_flags="-config ${garm_config}"}
+
+load_rc_config ${name}
+
+start_cmd="start"
+stop_cmd="stop"
+status_cmd="status"
+
+stop()
+{
+	if [ -f "${daemon_pidfile}" ]; then
+		pids=$( pgrep -F ${daemon_pidfile} 2>&1 )
+		_err=$?
+		[ ${_err} -eq  0 ] && kill -9 ${pids} && /bin/rm -f ${daemon_pidfile}
+	fi
+	if [ -f "${pidfile}" ]; then
+		pids=$( pgrep -F ${pidfile} 2>&1 )
+		_err=$?
+		[ ${_err} -eq  0 ] && kill -9 ${pids} && /bin/rm -f ${pidfile}
+	fi
+}
+
+start()
+{
+	[ ! -d ${logdir} ] && mkdir -p ${logdir}
+	touch ${logfile}
+	chown ${garm_user} ${logdir} ${logfile}
+	/usr/sbin/daemon -u ${garm_user} -f -R5 -p ${pidfile} -P ${daemon_pidfile} -o ${logfile} ${command} ${garm_flags}
+}
+
+status()
+{
+	if [ -f "${pidfile}" ]; then
+		pids=$( pgrep -F ${pidfile} 2>&1 )
+		_err=$?
+		if [ ${_err} -eq  0 ]; then
+			echo "${name} is running as pid ${pids}"
+			exit 0
+		else
+			echo "wrong pid: ${pids}"
+			exit 1
+		fi
+	else
+		echo "no pidfile $pidfile"
+		exit 1
+	fi
+}
+
+run_rc_command "$1"

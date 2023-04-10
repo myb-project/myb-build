@@ -397,7 +397,7 @@ while : ; do
 			/usr/local/bin/cbsd myb_k8s_settings
 			;;
 		u)	
-			/root/bin/upgrade.sh
+			/root/bin/upgrade.sh start
 			;;
 		*)
 			;;

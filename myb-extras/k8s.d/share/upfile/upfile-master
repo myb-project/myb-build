@@ -29,6 +29,7 @@ postcreate_%%JNAME%%()
 		bexec <<EOF
 sudo apt update
 sudo apt install -y rsync
+sudo ln -s /home/debian /home/ubuntu
 sudo [ -d /home/ubuntu/kubernetes ] && rm -rf /home/ubuntu/kubernetes || true
 sudo [ -d /home/ubuntu/puppet ] && rm -rf /home/ubuntu/puppet || true
 sudo tar xfzv kubernetes.tgz

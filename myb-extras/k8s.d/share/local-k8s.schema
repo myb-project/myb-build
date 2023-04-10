@@ -13,17 +13,18 @@ created="TIMESTAMP DATE DEFAULT (datetime('now','localtime'))"
 cluster="TEXT DEFAULT \"k8s-bhyve.io\""
 master_hostname="TEXT DEFAULT \"master.k8s-bhyve.io\""
 # https://github.com/kubernetes/kubernetes/releases
-k8s_ver="TEXT DEFAULT \"v1.26.1\""
+k8s_ver="TEXT DEFAULT \"v1.26.3\""
 # https://github.com/etcd-io/etcd
-etcd_ver="TEXT DEFAULT \"v3.5.6\""
+etcd_ver="TEXT DEFAULT \"v3.5.7\""
 # https://github.com/containerd/containerd/releases
-containerd_ver="TEXT DEFAULT \"1.6.15\""
+containerd_ver="TEXT DEFAULT \"1.7.0\""
 # https://github.com/flannel-io/flannel/releases
-flannel_ver="TEXT DEFAULT \"v0.20.2\""
+flannel_ver="TEXT DEFAULT \"v0.21.3\""
 # https://github.com/coredns/coredns/releases
-coredns_ver="TEXT DEFAULT \"v1.10.0\""
+# also kubernetes/kube_service/coredns/coredns.yaml
+coredns_ver="TEXT DEFAULT \"v1.10.1\""
 # https://github.com/kubernetes-sigs/cri-tools/releases
-cri_tools_ver="TEXT DEFAULT \"v1.26.0\""
+cri_tools_ver="TEXT DEFAULT \"v1.26.1\""
 # https://github.com/opencontainers/runc/releases
 runc_ver="TEXT DEFAULT \"v1.1.4\""
 # https://github.com/containernetworking/plugins/releases

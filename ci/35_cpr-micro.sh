@@ -1,5 +1,5 @@
 #!/bin/sh
-mybbasever="13.1"
+mybbasever="13.2"
 
 pgm="${0##*/}"				# Program basename
 progdir="${0%/*}"			# Program directory

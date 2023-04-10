@@ -510,7 +510,10 @@ echo
 # devfs already mounted here
 chroot ${BSDINSTALL_CHROOT} /bin/sh <<XEOF
 
+sysrc -qf /boot/loader.conf module_path="/boot/kernel;/boot/modules;/boot/dtb;/boot/dtb/overlays"
+
 truncate -s0 /etc/motd /etc/motd.template /var/run/motd
+set -o xtrace
 
 sysrc -qf /etc/rc.conf \
  nginx_enable="YES" \
@@ -537,12 +540,20 @@ sysrc -qf /etc/rc.conf \
 cd /cbsd
 # FIND
 tar xfz pkg.pkg
-/cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg.pkg
-/cbsd/usr/local/sbin/pkg-static add -f /cbsd/*.pkg
+
+env ASSUME_ALWAYS_YES=yes SIGNATURE_TYPE=none IGNORE_OSVERSION=yes /cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg.pkg || true
+
+hash -r
+
+env ASSUME_ALWAYS_YES=yes SIGNATURE_TYPE=none IGNORE_OSVERSION=yes /usr/sbin/pkg add -f /cbsd/*.pkg || true
+
+hash -r
 
 /usr/local/bin/rsync -avz /usr/local/myb/jail-skel/ /
 [ ! -d /root/bin ] && mkdir -p /root/bin
-/usr/local/bin/rsync -avz /usr/local/myb/myb-extras/bin/ /root/bin/
+/usr/local/bin/rsync -avz /usr/local/myb/myb-extras/bin/ /root/bin/ || true
+
+echo "rsync done"
 
 cat > /etc/rc.initial <<EOF
 /usr/bin/tail -f /var/log/mybinit.log
@@ -557,6 +568,9 @@ export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 EOF
 chmod +x /usr/local/etc/rc.d/mybinst.sh
 #CBSD
+
+ls -la /usr/local/etc/rc.d/
+cat /etc/rc.initial
 
 XEOF
 
@@ -573,6 +587,17 @@ fi
 if [ ! -z "$BSDINSTALL_FETCHDEST" ]; then
 	rm -rf "$BSDINSTALL_FETCHDEST"
 fi
+
+cat > ${BSDINSTALL_CHROOT}/boot/loader.conf <<EOF
+loader_menu_title="Welcome to MyBee Project"
+module_path="/boot/kernel;/boot/modules;/boot/dtb;/boot/dtb/overlays"
+cryptodev_load="YES"
+opensolaris_load="YES"
+zfs_load="YES"
+EOF
+
+echo "CONFIG"
+cat ${BSDINSTALL_CHROOT}/boot/loader.conf
 
 dialog --backtitle "MyBee Installer" --title "Manual Configuration" \
     --default-button no --yesno \

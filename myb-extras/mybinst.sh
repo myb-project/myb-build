@@ -35,8 +35,6 @@ if [ ${myb_firstboot} -eq 1 ]; then
 	fi
 	echo
 
-
-
 	if [ "${myb_manage_loaderconf}" != "NO" ]; then
 		# tune loader.conf
 		cat >> /boot/loader.conf <<EOF
@@ -159,7 +157,7 @@ remote_install=$?
 
 if [ ${remote_install} -eq 1 ]; then
 	echo "Remote upgrade: pkg update -f ..."
-	pkg update -f
+	env IGNORE_OSVERSION=yes SIGNATURE_TYPE=none pkg update -f
 fi
 
 ## Remote install by list
@@ -172,14 +170,14 @@ if [ -r /usr/local/myb/myb.list ]; then
 	if [ -n "${install_list}" ]; then
 		echo "Remote upgrade: install dependencies: ${install_list} ..."
 		#pkg install -r MyBee-latest -y -f cbsd ${install_list}
-		pkg install -y -f cbsd ${install_list}
-		pkg upgrade -r MyBee-latest -y
+		env SIGNATURE_TYPE=none ASSUME_ALWAYS_YES=yes IGNORE_OSVERSION=yes pkg install -y -f cbsd ${install_list}
+		env SIGNATURE_TYPE=none ASSUME_ALWAYS_YES=yes IGNORE_OSVERSION=yes pkg upgrade -r MyBee-latest -y
 	fi
 fi
 
 if [ ${myb_firstboot} -eq 0 ]; then
 	# upgrade from repo
-	pkg upgrade -r MyBee-latest -y
+	env SIGNATURE_TYPE=none ASSUME_ALWAYS_YES=yes IGNORE_OSVERSION=yes pkg upgrade -r MyBee-latest -y
 fi
 
 [ -d /usr/local/cbsd/modules/api.d ] && rm -rf /usr/local/cbsd/modules/api.d
@@ -362,7 +360,7 @@ fi
 cat > /usr/jails/etc/modules.conf <<EOF
 pkg.d				# MyBee auto-setup
 bsdconf.d			# MyBee auto-setup
-zfsinstall.d			# MyBee auto-setup
+zfsinstall.d		# MyBee auto-setup
 api.d				# MyBee auto-setup
 myb.d				# MyBee auto-setup
 k8s.d				# MyBee auto-setup
@@ -395,6 +393,9 @@ cp -a /usr/local/myb/api.d/etc/jail-api.conf ~cbsd/etc/
 
 cp -a /usr/local/myb/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_images.json
 cp -a /usr/local/myb/syslog.conf /etc/syslog.conf
+
+[ ! -r ~cbsd/etc/cbsd-pf.conf ] && /usr/bin/touch -s0 ~cbsd/etc/cbsd-pf.conf
+/usr/sbin/sysrc -qf ~cbsd/etc/cbsd-pf.conf cbsd_nat_skip_natip_network=1
 
 /usr/sbin/sysrc -qf ~cbsd/etc/api.conf server_list="${hostname}"
 /usr/sbin/sysrc -qf ~cbsd/etc/bhyve-api.conf ip4_gw="${myb_default_network}.1"

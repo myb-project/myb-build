@@ -1,5 +1,5 @@
 #!/bin/sh
-
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 ### SET version in /root/myb-build/ports/myb/Makefile
 ### + /root/myb-build/jail-skel/usr/local/etc/mybee/version
 
@@ -9,7 +9,25 @@ cd /
 
 set -o errexit
 
+if [ ! -r /usr/ports/Makefile ]; then
+	echo "No such /usr/ports"
+	exit 1
+fi
+
+GIT_CMD=$( which git )
+RSYNC_CMD=$( which rsync )
+
 # first init
+#if [ ! -d /root/clonos-ports ]; then
+#	${GIT_CMD} clone https://github.com/clonos/clonos-ports-wip.git /root/clonos-ports
+#else
+#	cd /root/clonos-ports
+#	${GIT_CMD} pull
+#fi
+
+#${RSYNC_CMD} -avz /root/clonos-ports/ /usr/ports/
+
+
 cbsd jremove jname='cpr*'
 rm -rf /var/cache/packages/*
 [ -d /usr/ports/sysutils/cbsd-mq-api ] && rm -rf /usr/ports/sysutils/cbsd-mq-api
@@ -18,8 +36,8 @@ cp -a /root/myb-build/ports/cbsd-mq-api /usr/ports/sysutils/
 cp -a /root/myb-build/ports/garm /usr/ports/sysutils/
 
 # devel CBSD
-#[ -d /usr/ports/sysutils/cbsd ] && rm -rf /usr/ports/sysutils/cbsd
-#cp -a /root/myb-build/ports/cbsd /usr/ports/sysutils/
+[ -d /usr/ports/sysutils/cbsd ] && rm -rf /usr/ports/sysutils/cbsd
+cp -a /root/myb-build/ports/cbsd /usr/ports/sysutils/
 
 # refresh modules
 [ -d /root/myb-build/myb-extras/myb.d ] && rm -rf /root/myb-build/myb-extras/myb.d
@@ -41,35 +59,58 @@ cp -a /root/myb-build/myb-extras/k8s-system-default /root/myb-build/myb-extras/k
 cp -a /usr/local/cbsd/modules/api.d /root/myb-build/myb-extras/
 rm -rf /root/myb-build/myb-extras/api.d/.git || true
 
+cbsd bases
+
 # not for half:
 /root/myb-build/ci/00_cleanup.sh
+cbsd bases
 /root/myb-build/ci/00_srcup.sh
+cbsd bases
 /root/myb-build/ci/10_patch-src.sh
+cbsd bases
 /root/myb-build/ci/20_world.sh
+cbsd bases
 /root/myb-build/ci/30_cpr.sh
+cbsd bases
 # need to chick-egg - we need myb.pkg:
 /root/myb-build/ci/95_updaterepo.sh
+cbsd bases
 
 /root/myb-build/ci/35_cpr-micro.sh
+cbsd bases
 
 #fi
 
 # half build
 /root/myb-build/ci/40_jail.sh
+cbsd bases
+
 /root/myb-build/ci/44_export-micro.sh
+cbsd bases
+
 /root/myb-build/ci/50_purgejail.sh
+cbsd bases
+
 /root/myb-build/ci/55_purge_distribution.sh
+cbsd bases
+
 /root/myb-build/ci/60_distribution.sh
+cbsd bases
+
 /root/myb-build/ci/70_manifests.sh
+cbsd bases
+
 /root/myb-build/ci/90_conv.sh
+cbsd bases
 
 /root/myb-build/ci/95_updaterepo.sh
+cbsd bases
 
-chmod 0644 /tmp/mybee1-13.1_amd64.img
+chmod 0644 /tmp/mybee1-13.2_amd64.img
 chmod 0644 /usr/jails/jails-data/mybee1-data/usr/freebsd-dist/*
 
 echo
-echo "scp /tmp/mybee1-13.1_amd64.img oleg@172.16.0.3:mybee1-13.1_amd64.img"
+echo "scp /tmp/mybee1-13.2_amd64.img oleg@172.16.0.3:mybee1-13.2_amd64.img"
 echo
 echo "cd /usr/jails/jails-data/mybee1-data/usr/freebsd-dist"
 echo "sftp -oPort=222 oleg@www.bsdstore.ru   -> /usr/local/www/myb.convectix.com/"
