@@ -13,20 +13,20 @@ created="TIMESTAMP DATE DEFAULT (datetime('now','localtime'))"
 cluster="TEXT DEFAULT \"k8s-bhyve.io\""
 master_hostname="TEXT DEFAULT \"master.k8s-bhyve.io\""
 # https://github.com/kubernetes/kubernetes/releases
-k8s_ver="TEXT DEFAULT \"v1.26.3\""
+k8s_ver="TEXT DEFAULT \"v1.27.1\""
 # https://github.com/etcd-io/etcd
 etcd_ver="TEXT DEFAULT \"v3.5.7\""
 # https://github.com/containerd/containerd/releases
 containerd_ver="TEXT DEFAULT \"1.7.0\""
 # https://github.com/flannel-io/flannel/releases
-flannel_ver="TEXT DEFAULT \"v0.21.3\""
+flannel_ver="TEXT DEFAULT \"v0.21.4\""
 # https://github.com/coredns/coredns/releases
 # also kubernetes/kube_service/coredns/coredns.yaml
 coredns_ver="TEXT DEFAULT \"v1.10.1\""
 # https://github.com/kubernetes-sigs/cri-tools/releases
 cri_tools_ver="TEXT DEFAULT \"v1.26.1\""
 # https://github.com/opencontainers/runc/releases
-runc_ver="TEXT DEFAULT \"v1.1.4\""
+runc_ver="TEXT DEFAULT \"v1.1.6\""
 # https://github.com/containernetworking/plugins/releases
 cni_plugins_linux_ver="TEXT DEFAULT \"v1.2.0\""
 init_master_ips="TEXT DEFAULT \"DHCP\""

@@ -143,7 +143,7 @@ if [ ${gold} -eq 1 ]; then
 	IMGTYPE="md"
 	master_vm_imgsize="5g"
 else
-	VM_OS_PROFILE="cloud-kubernetes-26"
+	VM_OS_PROFILE="cloud-kubernetes-27"
 	IMGTYPE="zvol"
 fi
 

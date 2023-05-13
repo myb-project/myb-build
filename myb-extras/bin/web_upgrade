@@ -1,0 +1,246 @@
+#!/bin/sh
+
+ECHO="echo"
+
+OPATH="${PATH}"
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+[ -z "${PKG_CMD}" ] && PKG_CMD=$( which pkg || which pkg-static )
+[ -z "${CUT_CMD}" ] && CUT_CMD=$( which cut )
+[ -z "${AWK_CMD}" ] && AWK_CMD=$( which awk )
+[ -z "${GREP_CMD}" ] && GREP_CMD=$( which grep )
+[ -z "${SED_CMD}" ] && SED_CMD=$( which sed )
+[ -z "${TRUNCATE_CMD}" ] && TRUNCATE_CMD=$( which truncate )
+[ -z "${CAT_CMD}" ] && CAT_CMD=$( which cat )
+[ -z "${CP_CMD}" ] && CP_CMD=$( which cp )
+[ -z "${RM_CMD}" ] && RM_CMD=$( which rm )
+[ -z "${FETCH_CMD}" ] && FETCH_CMD=$( which fetch )
+[ -z "${HOSTNAME_CMD}" ] && HOSTNAME_CMD=$( which hostname )
+[ -z "${UNAME_CMD}" ] && UNAME_CMD=$( which uname )
+[ -z "${TIMEOUT_CMD}" ] && TIMEOUT_CMD=$( which timeout )
+PATH="${OPATH}"
+
+err() {
+	exitval=$1
+	shift
+	${ECHO} "$*"
+	# 1>&2
+	exit ${exitval}
+}
+
+[ ! -r /root/bin/upgrade.sh ] && err 1 "no such script: /root/bin/upgrade.sh"
+
+upgrade_packages()
+{
+	[ -r /usr/jails/etc/cbsd_queue.conf ] && . /usr/jails/etc/cbsd_queue.conf
+	[ -r /usr/jails/nc.inventory ] && . /usr/jails/nc.inventory
+
+	# not for DEV server:
+	myhost=$( ${HOSTNAME_CMD} | ${AWK_CMD} '{printf $1}' )
+	if [ "${mod_cbsd_queue_enabled}" = "YES" -a -z "${MOD_CBSD_QUEUE_DISABLED}" ]; then
+		echo "HERE [${cbsd_queue_backend} cbsd_queue_name=${cbsd_settings_queue_name} id=update cmd=update status=1]" >> /tmp/upgrade2.txt
+		if [ -z "${cbsd_queue_backend}" ]; then
+			MOD_CBSD_QUEUE_DISABLED="1"
+		else
+			[ -n "${cbsd_jail_queue_name}" ] && /usr/local/bin/cbsd ${cbsd_queue_backend} cbsd_queue_name=${cbsd_settings_queue_name} id=update cmd=update status=1 workdir="${workdir}" jname="0" data_msg="starting..."
+		fi
+	fi
+
+	if [ -z "${myhost}" -o "${myhost}" = "home.olevole.ru" ]; then
+		echo "Dev server"
+		echo "Upgrade in progress..."
+		for i in $( seq 1 5 ); do
+			echo "Phase ${i}..."
+			if [ "${mod_cbsd_queue_enabled}" = "YES" -a -z "${MOD_CBSD_QUEUE_DISABLED}" ]; then
+				if [ -z "${cbsd_queue_backend}" ]; then
+					MOD_CBSD_QUEUE_DISABLED="1"
+				else
+					p=$(( 15 * i ))
+					[ -n "${cbsd_jail_queue_name}" ] && /usr/local/bin/cbsd ${cbsd_queue_backend} cbsd_queue_name=${cbsd_settings_queue_name} id=update cmd=update status=${p} workdir="${workdir}" jname="0" data_msg="update phase ${i}/5.."
+				fi
+			fi
+			sleep 1
+		done
+	else
+		${CP_CMD} /root/bin/upgrade.sh /tmp/
+		/tmp/upgrade.sh -c 0 -w 1
+	fi
+
+	if [ "${mod_cbsd_queue_enabled}" = "YES" -a -z "${MOD_CBSD_QUEUE_DISABLED}" ]; then
+		if [ -z "${cbsd_queue_backend}" ]; then
+			MOD_CBSD_QUEUE_DISABLED="1"
+		else
+			[ -n "${cbsd_jail_queue_name}" ] && /usr/local/bin/cbsd ${cbsd_queue_backend} cbsd_queue_name=${cbsd_settings_queue_name} id=update cmd=update status=100 workdir="${workdir}" jname="0" data_msg="complete"
+		fi
+	fi
+}
+
+## SYNC WITH CPR/Build
+list_packages()
+{
+	local STD_OUT="/dev/stdout"
+	local STD_OUT_JSON="/dev/stdout"
+
+	[ -z "${json}" ] && json="1"
+	[ -z "${save_repo}" ] && save_repo="1"
+
+	if [ ${save_repo} -eq 1 ]; then
+		STD_OUT="/tmp/cix_upgrade.conf"
+		STD_OUT_JSON="/tmp/cix_upgrade.conf.json"
+		${TRUNCATE_CMD} -s0 ${STD_OUT} ${STD_OUT_JSON}
+	fi
+
+	cbsd_ver=$( /usr/local/bin/cbsd version 2>/dev/null | ${AWK_CMD} '{printf $1}' )
+	if [ -z "${cbsd_ver}" ]; then
+		cbsd_ver=$( ${PKG_CMD} info cbsd 2>/dev/null | ${GREP_CMD} ^Version | ${CUT_CMD} -d : -f 2 | ${AWK_CMD} '{printf $1}' )
+	fi
+	php_ver=$( ${PKG_CMD} info php[0-9][0-9]-[0-9]* 2>/dev/null )
+	myb_ver=$( ${PKG_CMD} info myb 2>/dev/null | ${GREP_CMD} ^Version | ${CUT_CMD} -d : -f 2 | ${AWK_CMD} '{printf $1}' )
+	clonos_ver=$( ${PKG_CMD} info clonos 2>/dev/null | ${GREP_CMD} ^Version | ${CUT_CMD} -d : -f 2 | ${AWK_CMD} '{printf $1}' )
+
+	cbsd_api_ver=$( ${PKG_CMD} info cbsd-mq-api 2>/dev/null | ${GREP_CMD} ^Version | ${CUT_CMD} -d : -f 2 | ${AWK_CMD} '{printf $1}' )
+	cbsd_router_ver=$( ${PKG_CMD} info cbsd-mq-router 2>/dev/null | ${GREP_CMD} ^Version | ${CUT_CMD} -d : -f 2 | ${AWK_CMD} '{printf $1}' )
+
+	installed_component=
+
+	for i in cbsd_api_ver cbsd_router_ver cbsd_ver clonos_ver myb_ver php_ver; do
+		_val=
+		eval _val="\$$i"
+		[ -z "${_val}" ] && continue
+		component=$( echo ${i} | ${SED_CMD} 's:_ver::g' )
+
+		if [ ${save_repo} -eq 1 ]; then
+			printf "${component}_ver_new=\"${_val}\"\n" >>${STD_OUT}
+		else
+			if [ ${json} -eq 0 ]; then
+				printf "${component}: ${_val}\n" >>${STD_OUT}
+				continue
+			fi
+		fi
+
+		if [ -z "${installed_component}" ]; then
+			installed_component="${i}"
+		else
+			installed_component="${installed_component} ${i}"
+		fi
+		installed_component_num=$(( installed_component_num + 1 ))
+	done
+
+	[ ${json} -eq 0 ] && return 0
+
+	${CAT_CMD} >>${STD_OUT_JSON} <<EOF
+{
+  "installed": {
+EOF
+
+	current_component=0
+	for i in ${installed_component}; do
+		current_component=$(( current_component + 1 ))
+		_val=
+		eval _val="\$$i"
+		[ -z "${_val}" ] && continue
+		component=$( echo ${i} | ${SED_CMD} 's:_ver::g' )
+		if [ ${current_component} -eq ${installed_component_num} ]; then
+			printf "    \"${component}\": \"${_val}\"\n" >>${STD_OUT_JSON}
+		else
+			printf "    \"${component}\": \"${_val}\",\n" >>${STD_OUT_JSON}
+		fi
+	done
+
+	if [ ${save_repo} -eq 1 ]; then
+		echo "  }" >>${STD_OUT_JSON}
+		echo "}" >>${STD_OUT_JSON}
+		return 0
+	fi
+
+	[ -r ${cache_file} ] && . ${cache_file}
+
+	${CAT_CMD} <<EOF
+  },
+  "latest": {
+EOF
+
+	latest_component_num=0
+	current_component_num=0
+
+	for i in ${installed_component}; do
+		current_component=$(( current_component + 1 ))
+		_val=
+		eval _val="\$$i"
+		[ -z "${_val}" ] && continue
+		i_new="${i}_new"
+		eval _val_new="\$$i_new"
+		[ -z "${_val_new}" ] && continue
+		if [ "${_val_new}" != "${_val}" ]; then
+			latest_component_num=$(( latest_component_num + 1 ))
+			eval latest_param${latest_component_num}="\"${i}\""
+			eval latest_val${latest_component_num}="${_val_new}"
+		fi
+	done
+
+	while [ ${current_component_num} -ne ${latest_component_num} ]; do
+		current_component_num=$(( current_component_num + 1 ))
+		eval _par="\$latest_param${current_component_num}"
+		eval _val="\$latest_val${current_component_num}"
+		component=$( echo ${_par} | ${SED_CMD} 's:_ver::g' )
+		if [ ${current_component_num} -eq ${latest_component_num} ]; then
+			printf "    \"${component}\": \"${_val}\"\n" >>${STD_OUT_JSON}
+		else
+			printf "    \"${component}\": \"${_val}\",\n" >>${STD_OUT_JSON}
+		fi
+
+	done
+	${CAT_CMD} <<EOF
+  }
+}
+EOF
+
+}
+
+#### MAIN
+# Keep in sync with CPR!
+json=0
+save_repo=0
+
+cache_file="/tmp/cix_upgrade_latest.conf"
+
+case "${1}" in
+	listjson)
+		cache_file="/tmp/cix_upgrade_latest.conf"
+		json=1
+		list_packages
+		;;
+	upgrade)
+		dryrun=0
+		${CP_CMD} /root/bin/web_upgrade /tmp/
+		${RM_CMD} -f ${cache_file}
+		exec /usr/sbin/daemon -o /var/log/web_upgrade.txt /usr/bin/lockf -s -t0 /tmp/web_upgrade.lock /tmp/web_upgrade webupgrade
+		;;
+	webupgrade)
+		dryrun=0
+		upgrade_packages
+		;;
+	check_upgrade)
+		tmpver=$( ${UNAME_CMD} -r )
+		ver=${tmpver%%-*}
+		unset tmpver
+
+		ver=${ver%%.*}
+
+		URL="https://clonos-pkg.convectix.com/FreeBSD:${ver}:amd64/latest/clonos_ver.conf"
+		_res=$( ${TIMEOUT_CMD} 10 ${FETCH_CMD} -o ${cache_file} ${URL} 2>&1 )
+		ret=$?
+		if [ ${ret} -eq 0 ]; then
+			cache_file="/tmp/cix_upgrade_latest.conf"
+			json=1
+			list_packages
+		else
+			${RM_CMD} -f ${cache_file}
+			err 1 "check_uprade fetch error: ${_res}"
+		fi
+		;;
+	*)
+		err 1 "unknown mode: ${1}"
+		;;
+esac
+
+exit 0

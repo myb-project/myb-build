@@ -1,7 +1,19 @@
 #!/bin/sh
 # TODO: sync with upgrade.sh
 #
-export PATH=/usr/local/bin:/usr/local/sbin:$PATH
+OPATH="${PATH}"
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+
+# grafefull restart for WEB services?
+web=0
+
+while getopts "w:" opt; do
+	case "${opt}" in
+		w) web="1" ;;
+	esac
+	shift $(($OPTIND - 1))
+done
+
 myb_firstboot="1"				# already initialized ?
 [ -r /etc/rc.conf ] && . /etc/rc.conf
 if [ -z "${myb_default_network}" ]; then
@@ -40,13 +52,14 @@ if [ ${myb_firstboot} -eq 1 ]; then
 		cat >> /boot/loader.conf <<EOF
 loader_menu_title="Welcome to MyBee Project"
 
+module_path="/boot/kernel;/boot/modules;/boot/dtb;/boot/dtb/overlays"
+vmm_load="YES"
 #vfs.zfs.arc_max = "512M"
 aesni_load="YES"
 ipfw_load="YES"
 net.inet.ip.fw.default_to_accept=1
 cpuctl_load="YES"
 pf_load="YES"
-vmm_load="YES"
 kern.racct.enable=1
 ipfw_nat_load="YES"
 libalias_load="YES"
@@ -189,6 +202,9 @@ cp -a /usr/local/myb/myb.d /usr/local/cbsd/modules/
 [ -d /usr/local/cbsd/modules/garm.d ] && rm -rf /usr/local/cbsd/modules/garm.d
 cp -a /usr/local/myb/garm.d /usr/local/cbsd/modules/
 
+[ -d /usr/local/cbsd/modules/convectix.d ] && rm -rf /usr/local/cbsd/modules/convectix.d
+cp -a /usr/local/myb/convectix.d /usr/local/cbsd/modules/
+
 [ -d /usr/local/cbsd/modules/k8s.d ] && rm -rf /usr/local/cbsd/modules/k8s.d
 cp -a /usr/local/myb/k8s.d /usr/local/cbsd/modules/
 
@@ -217,6 +233,7 @@ if [ -z "${auto_iface}" ]; then
 fi
 
 ip4_addr=$( ifconfig ${auto_iface} 2>/dev/null | /usr/bin/awk '/inet [0-9]+/ { print $2}' | /usr/bin/head -n 1 )
+
 
 ## when no IP?
 [ -z "${ip4_addr}" ] && ip4_addr="${myb_default_network}.1"
@@ -254,6 +271,9 @@ export NOINTER=1
 export workdir=/usr/jails
 
 /usr/local/cbsd/sudoexec/initenv /tmp/initenv.conf >> /var/log/cbsd_init.log 2>&1
+
+[ ! -r ~cbsd/etc/cbsd-pf.conf ] && /usr/bin/touch ~cbsd/etc/cbsd-pf.conf
+/usr/sbin/sysrc -qf ~cbsd/etc/cbsd-pf.conf cbsd_nat_skip_natip_network=1
 
 #  sshd_flags="-oUseDNS=no -oPermitRootLogin=without-password -oPort=22" \
 /usr/sbin/sysrc \
@@ -394,6 +414,7 @@ cp -a /usr/local/myb/api.d/etc/jail-api.conf ~cbsd/etc/
 cp -a /usr/local/myb/cbsd_api_cloud_images.json /usr/local/etc/cbsd_api_cloud_images.json
 cp -a /usr/local/myb/syslog.conf /etc/syslog.conf
 
+# dup ?
 [ ! -r ~cbsd/etc/cbsd-pf.conf ] && /usr/bin/touch -s0 ~cbsd/etc/cbsd-pf.conf
 /usr/sbin/sysrc -qf ~cbsd/etc/cbsd-pf.conf cbsd_nat_skip_natip_network=1
 
@@ -629,6 +650,7 @@ sync
 /sbin/reboot
 
 else
+	echo "Restart API, Router, Beanstalkd"
 	/usr/sbin/service cbsd-mq-api stop
 	/usr/sbin/service cbsd-mq-router stop
 	/usr/sbin/service beanstalkd stop
@@ -637,5 +659,13 @@ else
 	/usr/sbin/service cbsd-mq-router start
 	/usr/sbin/service cbsd-mq-api start
 fi
+
+# drop cache
+#[ -r /usr/jails/tmp/bhyve-vm.json ] && /bin/rm -f /usr/jails/tmp/bhyve-vm.json
+#[ -r /usr/jails/tmp/bhyve-cloud.json ] && rm -f /usr/jails/tmp/bhyve-cloud.json
+
+#/usr/local/bin/cbsd get_bhyve_profiles src=cloud
+#/usr/local/bin/cbsd get_bhyve_profiles src=vm clonos=1
+#echo "mybinst.sh done"
 
 exit 0

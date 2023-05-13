@@ -14,6 +14,7 @@ for i in ${A}; do
 	p2=${i##*\.}
 	# skip for .sh
 	[ "${p2}" = "sh" ] && continue
+	[ "${i}" = "web_upgrade" ] && continue
 	echo $i
 	${DIR}/${i}
 done

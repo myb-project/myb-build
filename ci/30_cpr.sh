@@ -42,10 +42,16 @@ jq \
 cmake \
 ninja"
 
-cbsd cpr makeconf=/root/myb-build/myb_make.conf pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}"
+cbsd cpr makeconf=/root/myb-build/myb_make.conf pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
 
-#echo "Sleep: mv ${dstdir}/* ${progdir}/cbsd/"
-#read p
+cbsd jstart jname=cpr9ca75 || true
+
+cp -a ${progdir}/scripts/cix_upgrade /usr/jails/jails-data/cpr9ca75-data/root/
+cbsd jexec jname=cpr9ca75 /root/cix_upgrade
+cp -a /usr/jails/jails-data/cpr9ca75-data/tmp/myb_ver.conf ${progdir}/cbsd/
+cp -a /usr/jails/jails-data/cpr9ca75-data/tmp/myb_ver.json ${progdir}/cbsd/
+
+cbsd jstop jname=cpr9ca75 || true
 
 mv ${dstdir}/* ${progdir}/cbsd/
 

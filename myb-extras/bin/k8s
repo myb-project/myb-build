@@ -8,7 +8,7 @@ if [ ${ret} -eq 0 ]; then
 	cbsd jimport /tmp/micro1.img
 fi
 
-profile="vm-linux-cloud-kubernetes-26.conf"
+profile="vm-linux-cloud-kubernetes-27.conf"
 cbsd fetch_iso path="/usr/jails/etc/defaults/${profile}" conv2zvol=1 keepname=0 dstdir=default fastscan=1 cloud=1
 /root/bin/checkiso.sh check
 

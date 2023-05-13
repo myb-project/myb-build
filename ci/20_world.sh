@@ -8,7 +8,7 @@ progdir="${0%/*}"			# Program directory
 progdir=$( realpath ${progdir} )
 progdir=$( dirname ${progdir} )
 
-cbsd world ver=${mybbasever} 
+cbsd world ver=${mybbasever}
 cbsd kernel ver=${mybbasever}
 
 set -e

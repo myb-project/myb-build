@@ -11,15 +11,21 @@ progdir=$( dirname ${progdir} )
 [ ! -r "${distdir}/subr/cbsdbootstrap.subr" ] && exit 1
 . ${distdir}/subr/cbsdbootstrap.subr || exit 1
 
-[ -z "${PKG_CMD}" ] && PKG_CMD="/usr/sbin/pkg"
+# lookup for RSYNC
+. /etc/rc.conf
 
-echo "pkg: $PKG_CMD"
+if [ -z "${MYB_UPLOAD_132}" ]; then
+	echo "no such MYB_UPLOAD_132 string in rc.conf"
+	exit 1
+fi
+
+[ -z "${PKG_CMD}" ] && PKG_CMD="/usr/sbin/pkg"
 
 # save package list
 grep -v '^#' ${progdir}/myb.list | sed 's:/usr/ports/::g' > ${progdir}/myb/myb.list
 
 rm -rf /usr/ports/packages/All
-DT=$( date "+%Y%m%d%H%M" )
+DT=$( date "+%d%H" )
 . ${progdir}/myb-extras/version
 VER="${myb_version}.${DT}"
 sed "s:%%VER%%:${VER}:g" /root/myb-build/ports/myb/Makefile-tpl > /root/myb-build/ports/myb/Makefile
@@ -36,5 +42,11 @@ cp -a ${progdir}/cbsd/*.pkg /usr/ports/packages/All/
 
 ${PKG_CMD} repo .
 
-${RSYNC_CMD} --delete -avz ./ rsync://myb-pkg.convectix.com/Ahth7ailah5eeci1ree6/
+sysrc -qf ${progdir}/cbsd/myb_ver.conf myb_ver_new="${myb_version}.${DT}"
 
+cp -a ${progdir}/cbsd/myb_ver.conf /usr/ports/packages/All/
+cp -a ${progdir}/cbsd/myb_ver.json /usr/ports/packages/All/
+
+${RSYNC_CMD} --delete -avz ./ ${MYB_UPLOAD_132}
+
+# retcode

@@ -3,7 +3,7 @@ CBSD module to deploy kubernetes cluster
 
 This module requires the kubernetes cloud image, please fetch via:
 
-`cbsd fetch_iso name=cloud-kubernetes-26 dstdir=default cloud=1 conv2zvol=1`
+`cbsd fetch_iso name=cloud-kubernetes-27 dstdir=default cloud=1 conv2zvol=1`
 
 To install:
 
