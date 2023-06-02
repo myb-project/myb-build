@@ -1,7 +1,7 @@
 #!/bin/sh
 set +e
 
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 
 pgm="${0##*/}"				# Program basename
 progdir="${0%/*}"			# Program directory

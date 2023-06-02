@@ -3,6 +3,9 @@ export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 ### SET version in /root/myb-build/ports/myb/Makefile
 ### + /root/myb-build/jail-skel/usr/local/etc/mybee/version
 
+# Brand, used in sysinstall/bsdconfig...
+export OSNAME="MyBee"
+
 cd /
 
 #if [ 1 -gt 2 ]; then
@@ -59,58 +62,35 @@ cp -a /root/myb-build/myb-extras/k8s-system-default /root/myb-build/myb-extras/k
 cp -a /usr/local/cbsd/modules/api.d /root/myb-build/myb-extras/
 rm -rf /root/myb-build/myb-extras/api.d/.git || true
 
-cbsd bases
 
+# !!!
 # not for half:
 /root/myb-build/ci/00_cleanup.sh
-cbsd bases
 /root/myb-build/ci/00_srcup.sh
-cbsd bases
 /root/myb-build/ci/10_patch-src.sh
-cbsd bases
 /root/myb-build/ci/20_world.sh
-cbsd bases
 /root/myb-build/ci/30_cpr.sh
-cbsd bases
 # need to chick-egg - we need myb.pkg:
 /root/myb-build/ci/95_updaterepo.sh
-cbsd bases
-
 /root/myb-build/ci/35_cpr-micro.sh
-cbsd bases
 
 #fi
 
 # half build
 /root/myb-build/ci/40_jail.sh
-cbsd bases
-
 /root/myb-build/ci/44_export-micro.sh
-cbsd bases
-
 /root/myb-build/ci/50_purgejail.sh
-cbsd bases
-
 /root/myb-build/ci/55_purge_distribution.sh
-cbsd bases
-
 /root/myb-build/ci/60_distribution.sh
-cbsd bases
-
 /root/myb-build/ci/70_manifests.sh
-cbsd bases
-
 /root/myb-build/ci/90_conv.sh
-cbsd bases
-
 /root/myb-build/ci/95_updaterepo.sh
-cbsd bases
 
-chmod 0644 /tmp/mybee1-13.2_amd64.img
+chmod 0644 /tmp/mybee1-14.0_amd64.img
 chmod 0644 /usr/jails/jails-data/mybee1-data/usr/freebsd-dist/*
 
 echo
-echo "scp /tmp/mybee1-13.2_amd64.img oleg@172.16.0.3:mybee1-13.2_amd64.img"
+echo "scp /tmp/mybee1-14.0_amd64.img oleg@172.16.0.3:mybee1-14.0_amd64.img"
 echo
 echo "cd /usr/jails/jails-data/mybee1-data/usr/freebsd-dist"
 echo "sftp -oPort=222 oleg@www.bsdstore.ru   -> /usr/local/www/myb.convectix.com/"

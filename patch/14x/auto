@@ -27,6 +27,13 @@
 #
 # $FreeBSD$
 #
+# CBSD
+BSDINSTALL_DISTSITE="http://myb.convectix.com"
+export BSDINSTALL_DISTSITE
+#export BSDINSTALL_SKIP_TIME="true"
+export BSDINSTALL_SKIP_SERVICES="true"
+export BSDINSTALL_SKIP_HARDENING="true"
+
 ############################################################ INCLUDES
 
 BSDCFG_SHARE="/usr/share/bsdconfig"
@@ -154,6 +161,8 @@ trap true SIGINT	# This section is optional
 trap error SIGINT	# Catch cntrl-C here
 if [ -z "$BSDINSTALL_SKIP_HOSTNAME" ]; then bsdinstall hostname || error "Set hostname failed"; fi
 
+# CBSD
+#DISTRIBUTIONS="base.txz cbsd.txz kernel.txz"
 export DISTRIBUTIONS="${DISTRIBUTIONS:-base.txz kernel.txz}"
 if [ -f $BSDINSTALL_DISTDIR/MANIFEST ]; then
 	DISTMENU=`awk -F'\t' '!/^(kernel\.txz|base\.txz)/{print $1,$5,$6}' $BSDINSTALL_DISTDIR/MANIFEST`
@@ -284,23 +293,24 @@ if f_interactive; then
 	esac
 fi
 
+# CBSD
 PMODES="
-	'$msg_auto_ufs' '$msg_auto_ufs_desc' '$msg_auto_ufs_help'
+	'$msg_auto_zfs' '$msg_auto_zfs_desc' '$msg_auto_zfs_help'
 	'$msg_manual' '$msg_manual_desc' '$msg_manual_help'
 	'$msg_shell' '$msg_shell_desc' '$msg_shell_help'
 " # END-QUOTE
 
 CURARCH=$( uname -m )
-case $CURARCH in
-	amd64|arm64|i386|riscv)	# Booting ZFS Supported
-		PMODES="
-			'$msg_auto_zfs' '$msg_auto_zfs_desc' '$msg_auto_zfs_help'
-			$PMODES
-		" # END-QUOTE
-		;;
-	*)			# Booting ZFS Unsupported
-		;;
-esac
+#case $CURARCH in
+#	amd64|arm64|i386|riscv)	# Booting ZFS Supported
+#		PMODES="
+#			'$msg_auto_zfs' '$msg_auto_zfs_desc' '$msg_auto_zfs_help'
+#			$PMODES
+#		" # END-QUOTE
+#		;;
+#	*)			# Booting ZFS Unsupported
+#		;;
+#esac
 
 exec 3>&1
 PARTMODE=`echo $PMODES | xargs dialog --backtitle "$OSNAME Installer" \
@@ -423,6 +433,74 @@ finalconfig() {
 	esac
 }
 
+#CBSD
+# pkg chroot install ?
+[ -z "${BSDINSTALL_CHROOT}" ] && BSDINSTALL_CHROOT=/mnt
+echo "=== MyBee post-install ==="
+echo
+
+# devfs already mounted here
+chroot ${BSDINSTALL_CHROOT} /bin/sh <<XEOF
+
+sysrc -qf /boot/loader.conf module_path="/boot/kernel;/boot/modules;/boot/dtb;/boot/dtb/overlays"
+
+truncate -s0 /etc/motd /etc/motd.template /var/run/motd
+set -o xtrace
+
+sysrc -qf /etc/rc.conf \
+ nginx_enable="YES" \
+ clear_tmp_enable="YES" \
+ beanstalkd_enable="YES" \
+ beanstalkd_flags="-l 127.0.0.1 -p 11300" \
+ kld_list="if_bridge vmm if_tap nmdm if_vether" \
+ ntpdate_enable="YES" \
+ ntpd_enable="YES" \
+ ntpd_sync_on_start="YES" \
+ cbsd_mq_api_enable="YES" \
+ cbsd_mq_router_enable="YES" \
+ sshd_enable="YES" \
+ sshd_flags="-oUseDNS=no -oPermitRootLogin=without-password -oPort=22" \
+ syslogd_enable="NO" \
+ sendmail_enable="NO" \
+ sendmail_submit_enable="NO" \
+ sendmail_outbound_enable="NO" \
+ sendmail_msp_queue_enable="NO" > /dev/null 2>&1
+# MyBee
+
+#clear
+
+cd /cbsd
+# FIND
+tar xfz pkg.pkg
+env ASSUME_ALWAYS_YES=yes SIGNATURE_TYPE=none IGNORE_OSVERSION=yes /cbsd/usr/local/sbin/pkg-static add -f /cbsd/pkg.pkg || true
+hash -r
+env ASSUME_ALWAYS_YES=yes SIGNATURE_TYPE=none IGNORE_OSVERSION=yes /usr/sbin/pkg add -f /cbsd/*.pkg || true
+hash -r
+/usr/local/bin/rsync -avz /usr/local/myb/jail-skel/ /
+[ ! -d /root/bin ] && mkdir -p /root/bin
+/usr/local/bin/rsync -avz /usr/local/myb/myb-extras/bin/ /root/bin/ || true
+
+echo "rsync done"
+
+cat > /etc/rc.initial <<EOF
+/usr/bin/tail -f /var/log/mybinit.log
+EOF
+
+touch /var/log/mybinit.log
+[ ! -d /usr/local/etc/rc.d ] && mkdir -p /usr/local/etc/rc.d
+cat > /usr/local/etc/rc.d/mybinst.sh <<EOF
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+/usr/sbin/daemon -o /var/log/mybinit.log /bin/sh /usr/local/myb/mybinst.sh
+EOF
+chmod +x /usr/local/etc/rc.d/mybinst.sh
+#CBSD
+
+ls -la /usr/local/etc/rc.d/
+cat /etc/rc.initial
+
+XEOF
+###CBSD
+
 # Allow user to change his mind
 [ -z "$BSDINSTALL_SKIP_FINALCONFIG" ] && finalconfig
 
@@ -446,6 +524,15 @@ if [ -z "$BSDINSTALL_SKIP_MANUAL" ]; then
 		chroot "$BSDINSTALL_CHROOT" /bin/sh 2>&1
 	fi
 fi
+
+## CBSD
+cat > ${BSDINSTALL_CHROOT}/boot/loader.conf <<EOF
+loader_menu_title="Welcome to MyBee Project"
+module_path="/boot/kernel;/boot/modules;/boot/dtb;/boot/dtb/overlays"
+cryptodev_load="YES"
+opensolaris_load="YES"
+zfs_load="YES"
+EOF
 
 bsdinstall entropy
 bsdinstall umount

@@ -1,0 +1,23 @@
+--- bootconfig.orig	2023-06-01 11:20:14.464579000 +0300
++++ bootconfig	2023-06-01 17:17:18.047176000 +0300
+@@ -112,13 +112,17 @@
+ 	esac
+ 	BOOTDIR="/efi/boot"
+ 	BOOTNAME="${BOOTDIR}/boot${ARCHBOOTNAME}.efi"
+-	FREEBSD_BOOTDIR="/efi/freebsd"
+-	FREEBSD_BOOTNAME="${FREEBSD_BOOTDIR}/loader.efi"
++	# CBSD
++	#FREEBSD_BOOTDIR="/efi/freebsd"
++	#FREEBSD_BOOTNAME="${FREEBSD_BOOTDIR}/loader.efi"
++	FREEBSD_BOOTDIR="/efi/boot"
++	FREEBSD_BOOTNAME="${FREEBSD_BOOTDIR}/bootx64.efi"
+ 	mntpt="$BSDINSTALL_CHROOT/boot/efi"
+ 
+ 	f_dprintf "Installing loader.efi onto ESP"
+ 	mkdir -p "${mntpt}/${FREEBSD_BOOTDIR}" "${mntpt}/${BOOTDIR}"
+-	cp "$BSDINSTALL_CHROOT/boot/loader.efi" "${mntpt}/${FREEBSD_BOOTNAME}"
++	# CBSD
++	cp "$BSDINSTALL_CHROOT/boot/loader.efi" "${mntpt}/EFI/boot/bootx64.efi"
+ 
+ 	#
+ 	# The following shouldn't be necessary. UEFI defines a way to

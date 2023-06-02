@@ -1,6 +1,6 @@
 #!/bin/sh
 
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 jname="mybee1"
 
 pgm="${0##*/}"				# Program basename
@@ -24,16 +24,11 @@ fi
 SRC_ROOT="${srcdir}/src_${mybbasever}/src"
 
 # without installworld ;-)
-#cp -a ${SRC_ROOT}/usr.sbin/bsdinstall/scripts/bootconfig ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/bootconfig
-cp -a ${progdir}/patch/bootconfig ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/bootconfig
-
-# RESTORE - on 05_ steps via SRC
-#cp -a ${SRC_ROOT}/usr.sbin/bsdinstall/scripts/auto ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/auto
-
-cp -a ${progdir}/patch/13x/auto ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/auto
+#cp -a ${progdir}/patch/bootconfig ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/bootconfig
+cp -a ${progdir}/patch/14x/auto ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/auto
 
 # also not for release (IP address for 172.16. here):
-cp -a ${progdir}/patch/13x/netconfig_ipv4 ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/netconfig_ipv4
+cp -a ${progdir}/patch/14x/netconfig_ipv4 ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/netconfig_ipv4
 
 fs="ufs"
 rm -f /tmp/${jname}-${mybbasever}_amd64.img

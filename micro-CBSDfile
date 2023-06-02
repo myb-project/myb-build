@@ -2,7 +2,9 @@ quiet=0
 
 jail_micro1()
 {
-	ver=13.2
+	. /etc/rc.conf          # mybbasever
+
+	ver="${mybbasever}"
 	baserw=1
 	astart=0
 	ip4_addr="DHCP"

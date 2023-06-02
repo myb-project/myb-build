@@ -29,16 +29,18 @@ if [ ${myb_firstboot} -eq 1 ]; then
 	echo " *** [MyBee post-install script] *** "
 	echo
 
+	# change password root shell
+	pw usermod -s /bin/csh -n root
+
 	# depending on the presence of an unprivileged extra user,
 	# we allow or deny remote login for root
 	# For FreeBSD 13.1-RELEASE we have 27 users after install + 'cbsd' = 28
 	#nobody:*:65534:65534::0:0:Unprivileged user:/nonexistent:/usr/sbin/nologin
 	#cbsd:*:150:150::0:0:Cbsd user:/usr/jails:/bin/sh
 	#cyrus:*:60:60::0:0:the cyrus mail server:/nonexistent:/usr/sbin/nologin
-	#messagebus:*:556:556::0:0:D-BUS Daemon User:/nonexistent:/usr/sbin/nologin
-	# 30
+	# 29
 	users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
-	if [ "${users_num}" != "30" ]; then
+	if [ "${users_num}" != "29" ]; then
 		SSH_ROOT_ENABLED=0
 		echo "[${users_num}] Default SSH ROOT access: disabled" | tee -a /var/log/mybinst.log
 	else
@@ -281,7 +283,7 @@ export workdir=/usr/jails
  cbsdd_enable="YES" \
  clear_tmp_enable="YES" \
  beanstalkd_enable="YES" \
- beanstalkd_flags="-l 127.0.0.1 -p 11300" \
+ beanstalkd_flags="-l 127.0.0.1 -p 11300 -z 104856" \
  kld_list="if_bridge vmm if_tap nmdm if_vether" \
  ntpdate_enable="YES" \
  ntpd_enable="YES" \
@@ -299,6 +301,7 @@ export workdir=/usr/jails
  ifconfig_bridge100="inet ${myb_default_network}.1/24 up" \
  osrelease_enable="NO" \
  mybosrelease_enable="YES" \
+ moused_nondefault_enable="NO" \
  cbsd_workdir="/usr/jails"
 
 if [ "${myb_manage_nginx}" != "NO" ]; then

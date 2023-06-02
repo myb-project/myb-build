@@ -1,6 +1,6 @@
 #!/bin/sh
 ## check for best compress/size/speed val:
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 jname="mybee1"
 
 pgm="${0##*/}"                          # Program basename
@@ -14,8 +14,8 @@ progdir=$( dirname ${progdir} )
 # lookup for RSYNC
 . /etc/rc.conf
 
-if [ -z "${MYB_UPLOAD_132}" ]; then
-	echo "no such MYB_UPLOAD_132 string in rc.conf"
+if [ -z "${MYB_UPLOAD_140}" ]; then
+	echo "no such MYB_UPLOAD_140 string in rc.conf"
 	exit 1
 fi
 
@@ -47,6 +47,6 @@ sysrc -qf ${progdir}/cbsd/myb_ver.conf myb_ver_new="${myb_version}.${DT}"
 cp -a ${progdir}/cbsd/myb_ver.conf /usr/ports/packages/All/
 cp -a ${progdir}/cbsd/myb_ver.json /usr/ports/packages/All/
 
-${RSYNC_CMD} --delete -avz ./ ${MYB_UPLOAD_132}
+${RSYNC_CMD} --delete -avz ./ ${MYB_UPLOAD_140}
 
 # retcode

@@ -22,12 +22,11 @@ NGINX_VHOST="/usr/local/etc/nginx/sites-available/mybee.conf"
 HTTP_TPL="${DIST_MODULE_PATH}/share/nginx-tpl/http-mybee.conf.tpl"
 HTTPS_TPL="${DIST_MODULE_PATH}/share/nginx-tpl/https-mybee.conf.tpl"
 HTTP_NGINX="${DIST_MODULE_PATH}/share/nginx-tpl/http-nginx.conf"
-HTTPS_NGINX=""${DIST_MODULE_PATH}/share/nginx-tpl/https-nginx.conf"
-
-HTTPS_BOOT_TPL=""${DIST_MODULE_PATH}/share/nginx-tpl/https-boot-mybee.conf.tpl"
+HTTPS_NGINX="${DIST_MODULE_PATH}/share/nginx-tpl/https-nginx.conf"
+HTTPS_BOOT_TPL="${DIST_MODULE_PATH}/share/nginx-tpl/https-boot-mybee.conf.tpl"
 CERTBOT_CMD="/usr/local/bin/certbot"
 
-if [ ! -x ${CERTBOT_CMD} ]; then
+if [ ! -x "${CERTBOT_CMD}" ]; then
 	echo "no such executable ${CERTBOT_CMD}"
 	read p
 	exit 1
@@ -69,9 +68,12 @@ while [ true ]; do
 
 	printf "Enter valid FQDN: "
 	read ofqdn
-	${SYSRC_CMD} -qf ${tmp_choice} fqdn="${ofqdn}" > /dev/null 2>&1
-	fqdn="${ofqdn}"
-	[ -n "${fqdn}" ] && break
+	if [ -n "${ofqdn}" ]; then
+		echo "Letsencrypt for: ${ofqdn}..."
+		${SYSRC_CMD} -qf ${tmp_choice} fqdn="${ofqdn}" > /dev/null 2>&1
+		fqdn="${ofqdn}"
+		break
+	fi
 done
 
 trap "" SIGHUP SIGINT SIGTERM

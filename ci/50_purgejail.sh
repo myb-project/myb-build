@@ -1,6 +1,6 @@
 #!/bin/sh
 
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 jname="mybee1"
 
 pgm="${0##*/}"				# Program basename
@@ -50,6 +50,7 @@ sendmail_enable="NO" \
 sendmail_submit_enable="NO" \
 sendmail_outbound_enable="NO" \
 sendmail_msp_queue_enable="NO" \
-syslogd_flags="-ss"
+syslogd_flags="-ss" \
+moused_nondefault_enable="NO"
 
 # cron disable

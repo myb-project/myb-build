@@ -9,6 +9,7 @@ jailed=$( /sbin/sysctl -nq security.jail.jailed )
 : ${DIALOG_ESC=255}
 
 MACHINE=`uname -m`
+export OSNAME="MyBee"
 
 # resolv.conf from DHCP ends up in here, so make sure the directory exists
 mkdir /tmp/bsdinstall_etc

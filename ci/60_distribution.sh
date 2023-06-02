@@ -1,6 +1,6 @@
 #!/bin/sh
 set +e
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 jname="mybee1"
 
 pgm="${0##*/}"				# Program basename

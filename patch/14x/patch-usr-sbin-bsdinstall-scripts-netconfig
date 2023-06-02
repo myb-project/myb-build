@@ -1,0 +1,13 @@
+--- netconfig.orig	2023-06-01 15:28:21.617344000 +0300
++++ netconfig	2023-06-01 11:20:14.464987000 +0300
+@@ -158,10 +158,6 @@
+ 	esac
+ done < ${BSDINSTALL_TMPETC}/resolv.conf
+ 
+-SEARCH="convectix.com"
+-IP4_1="8.8.8.8"
+-IP4_2="8.8.4.4"
+-
+ RESOLV=""
+ if [ ${IPV6_AVAIL} -eq 1 -a ${IPV4_AVAIL} -eq 1 ];  then
+ 	RESOLV="

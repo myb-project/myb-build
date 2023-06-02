@@ -1,5 +1,5 @@
 #!/bin/sh
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 jname="micro1"
 
 pgm="${0##*/}"				# Program basename

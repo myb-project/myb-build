@@ -11,4 +11,3 @@ if [ -d ${progdir}/cbsd ]; then
 fi
 
 mkdir ${progdir}/cbsd
-

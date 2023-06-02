@@ -1,6 +1,6 @@
 #!/bin/sh
 ## check for best compress/size/speed val:
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 jname="mybee1"
 
 pgm="${0##*/}"                          # Program basename

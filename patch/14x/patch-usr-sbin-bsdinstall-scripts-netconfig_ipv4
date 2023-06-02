@@ -1,0 +1,13 @@
+--- netconfig_ipv4.orig	2023-06-01 11:20:14.465023000 +0300
++++ netconfig_ipv4	2023-06-01 15:37:21.514516000 +0300
+@@ -71,6 +71,10 @@
+ IP_ADDRESS=`ifconfig $INTERFACE inet | awk '/inet/ {printf("%s\n", $2); }'`
+ NETMASK=`ifconfig $INTERFACE inet | awk '/inet/ {printf("%s\n", $4); }'`
+ ROUTER=`netstat -rn -f inet | awk '/default/ {printf("%s\n", $2);}'`
++# CHECK FOR DHCP
++[ -z "${IP_ADDRESS}" ] && IP_ADDRESS="172.16.0.99"
++[ -z "${NETMASK}" ] && NETMASK="255.255.255.0"
++[ -z "${ROUTER}" ] && ROUTER="172.16.0.1"
+ 
+ exec 3>&1
+ IF_CONFIG=$(bsddialog --backtitle "$OSNAME Installer" --title 'Network Configuration' --form 'Static Network Interface Configuration' 0 0 0 \

@@ -1,5 +1,5 @@
 #!/bin/sh
-mybbasever="13.2"
+. /etc/rc.conf          # mybbasever
 
 pgm="${0##*/}"				# Program basename
 progdir="${0%/*}"			# Program directory
@@ -11,8 +11,17 @@ dstdir=$( mktemp -d )
 # cleanup old pkg ?
 #/var/cache/packages/pkgdir-cpr3e421 (host) -> /tmp/packages (jail)
 
-echo "cbsd cpr pkglist=/root/myb-build/micro.list dstdir=${dstdir}"
-cbsd cpr pkglist=/root/myb-build/micro.list dstdir=${dstdir}
+PREFETCHED_PACKAGES="\
+go120 \
+kubectl \
+ca_root_nss \
+k9s \
+helm \
+perl5 \
+"
+
+echo "cbsd cpr pkglist=/root/myb-build/micro.list dstdir=${dstdir} package_fetch=\"${PREFETCHED_PACKAGES}\""
+cbsd cpr pkglist=/root/myb-build/micro.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
 
 [ -d ${progdir}/micro1 ] && rm -rf ${progdir}/micro1
 mkdir -p ${progdir}/micro1
