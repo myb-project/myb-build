@@ -32,4 +32,5 @@ cp -a ${progdir}/patch/14x/netconfig_ipv4 ${workdir}/jails-data/${jname}-data/us
 
 fs="ufs"
 rm -f /tmp/${jname}-${mybbasever}_amd64.img
-cbsd jail2iso media=livecd ver=${ver} dstdir=/tmp efi=1 vm_guestfs=${fs} freesize=1024m jname=${jname} applytpl=0
+echo "cbsd jail2iso ver=${mybbasever} media=livecd dstdir=/tmp efi=1 vm_guestfs=${fs} freesize=1024m jname=${jname} applytpl=0"
+cbsd jail2iso ver=${mybbasever} media=livecd dstdir=/tmp efi=1 vm_guestfs=${fs} freesize=1024m jname=${jname} applytpl=0

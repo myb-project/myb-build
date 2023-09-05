@@ -65,4 +65,3 @@ cp -a ${progdir}/myb-extras/rc.local ${workdir}/jails-data/${jname}-data/etc/
 #cp -a ${progdir}/bootconfig ${workdir}/jails-data/${jname}-data/usr/libexec/bsdinstall/bootconfig
 
 sysrc -qf ${workdir}/jails-data/${jname}-data/etc/rc.conf hostname="mybee.my.domain"
-

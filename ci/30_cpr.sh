@@ -10,7 +10,7 @@ dstdir=$( mktemp -d )
 # cleanup old pkg ?
 #/var/cache/packages/pkgdir-cpr9ca75 (host) -> /tmp/packages (jail)
 
-echo "cbsd cpr pkglist=/root/myb-build/myb.list dstdir=${dstdir}"
+echo "cbsd cpr ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${dstdir}"
 
 PREFETCHED_PACKAGES="\
 nginx \
@@ -47,12 +47,14 @@ gmake \
 #/usr/ports/net/realtek-re-kmod
 
 
-cbsd cpr makeconf=/root/myb-build/myb_make.conf pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
+cbsd cpr makeconf=/root/myb-build/myb_make.conf ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
 
 cbsd jstart jname=cpr9ca75 || true
 
 cp -a ${progdir}/scripts/cix_upgrade /usr/jails/jails-data/cpr9ca75-data/root/
 cbsd jexec jname=cpr9ca75 /root/cix_upgrade
+
+# original?
 cp -a /usr/jails/jails-data/cpr9ca75-data/tmp/myb_ver.conf ${progdir}/cbsd/
 cp -a /usr/jails/jails-data/cpr9ca75-data/tmp/myb_ver.json ${progdir}/cbsd/
 

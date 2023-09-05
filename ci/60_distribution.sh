@@ -19,5 +19,5 @@ if [ ! -r ${SRC_ROOT}/Makefile ]; then
 	exit 1
 fi
 
-cbsd mkdistribution distribution="base kernel" destdir="${workdir}/jails-data/${jname}-data/usr/freebsd-dist"
+cbsd  mkdistribution ver=${mybbasever} distribution="base kernel" destdir="${workdir}/jails-data/${jname}-data/usr/freebsd-dist"
 mv ${workdir}/jails-data/${jname}-data/usr/freebsd-dist/kernel-GENERIC.txz ${workdir}/jails-data/${jname}-data/usr/freebsd-dist/kernel.txz

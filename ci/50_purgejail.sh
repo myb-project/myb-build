@@ -46,11 +46,11 @@ rm -rf ${workdir}/jails-data/${jname}-data/usr/share/snmp
 [ ! -f ${workdir}/jails-data/${jname}-data/usr/freebsd-dist ] && mkdir ${workdir}/jails-data/${jname}-data/usr/freebsd-dist
 
 sysrc -qf ${workdir}/jails-data/${jname}-data/etc/rc.conf \
-sendmail_enable="NO" \
-sendmail_submit_enable="NO" \
-sendmail_outbound_enable="NO" \
-sendmail_msp_queue_enable="NO" \
-syslogd_flags="-ss" \
-moused_nondefault_enable="NO"
+	sendmail_enable="NO" \
+	sendmail_submit_enable="NO" \
+	sendmail_outbound_enable="NO" \
+	sendmail_msp_queue_enable="NO" \
+	syslogd_flags="-ss" \
+	moused_nondefault_enable="NO"
 
 # cron disable
