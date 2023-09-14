@@ -1,6 +1,6 @@
 #!/bin/sh
 . /etc/rc.conf		# mybbasever
 set +e
-#cbsd srcup ver=${mybbasever} rev=2b5dd8b8901
-cbsd srcup ver=${mybbasever}
+cbsd srcup ver=${mybbasever} rev=4e027ca1514
+#cbsd srcup ver=${mybbasever}
 exit 0

@@ -48,9 +48,22 @@ make -C /root/myb-build/ports/myb clean
 make -C /root/myb-build/ports/myb package
 cp -a /usr/ports/packages/All/myb-*.pkg ${progdir}/cbsd/
 
-tar cf cbsd.tar cbsd
-xz -T8 cbsd.tar
-mv cbsd.tar.xz ${workdir}/jails-data/${jname}-data/usr/freebsd-dist/cbsd.txz
+#tar cf cbsd.tar cbsd
+#xz -T8 cbsd.tar
+#mv cbsd.tar.xz ${workdir}/jails-data/${jname}-data/usr/freebsd-dist/cbsd.txz
+
+# dist CBSD as kernel
+#tar cf kernel.tar cbsd
+#xz -T8 kernel.tar
+#mv kernel.tar.xz ${workdir}/jails-data/${jname}-data/usr/freebsd-dist/kernel.txz
+
+# fake/empty kernel.txz distribution
+cd /tmp
+mkdir xxx
+tar cf kernel.tar xxx
+rm -rf xxx
+xz -T8 kernel.tar
+mv kernel.tar.xz ${workdir}/jails-data/${jname}-data/usr/freebsd-dist/kernel.txz
 
 # same for /cbsd/ dir + components
 

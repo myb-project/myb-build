@@ -15,7 +15,6 @@ jail_micro1()
 
 postcreate_micro1()
 {
-
 	cbsd copy-binlib basedir=/ chaselibs=1 dstdir=/usr/jails/jails-data/micro1-data filelist=/root/myb-build/FreeBSD-microjail.txt
 
 	# turn off syslogd/sendmail/cron services
