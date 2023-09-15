@@ -11,3 +11,9 @@ if [ -d ${progdir}/cbsd ]; then
 fi
 
 mkdir ${progdir}/cbsd
+
+for i in cpr3e421 cprd07dc cpr9ca75 mybee1 micro1; do
+	cbsd jremove ${i}
+done
+
+exit 0

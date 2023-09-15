@@ -47,6 +47,7 @@ sysrc -qf ${progdir}/cbsd/myb_ver.conf myb_ver_new="${myb_version}.${DT}"
 cp -a ${progdir}/cbsd/myb_ver.conf /usr/ports/packages/All/
 cp -a ${progdir}/cbsd/myb_ver.json /usr/ports/packages/All/
 
-${RSYNC_CMD} --delete -avz ./ ${MYB_UPLOAD_140}
+#echo "${RSYNC_CMD} -avz ./ ${MYB_UPLOAD_140}latest/"
+${RSYNC_CMD} -avz ./ ${MYB_UPLOAD_140}latest/
 
 # retcode

@@ -40,7 +40,7 @@ if [ ${myb_firstboot} -eq 1 ]; then
 	#cyrus:*:60:60::0:0:the cyrus mail server:/nonexistent:/usr/sbin/nologin
 	# 29
 	users_num=$( grep -v '^#' /etc/master.passwd | wc -l | awk '{printf $1}' )
-	if [ "${users_num}" != "29" ]; then
+	if [ "${users_num}" != "28" ]; then
 		SSH_ROOT_ENABLED=0
 		echo "[${users_num}] Default SSH ROOT access: disabled" | tee -a /var/log/mybinst.log
 	else
