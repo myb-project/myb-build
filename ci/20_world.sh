@@ -8,6 +8,7 @@ progdir="${0%/*}"			# Program directory
 progdir=$( realpath ${progdir} )
 progdir=$( dirname ${progdir} )
 
+export OSNAME="MyBee"
 cbsd world ver=${mybbasever}
 cbsd kernel ver=${mybbasever}
 

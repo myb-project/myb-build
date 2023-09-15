@@ -4,6 +4,10 @@ progdir="${0%/*}"                       # Program directory
 progdir=$( realpath ${progdir} )
 progdir=$( dirname ${progdir} )
 
+service ntpd stop
+ntpdate 0.freebsd.pool.ntp.org
+service ntpd start
+
 # cleanup old data
 if [ -d ${progdir}/cbsd ]; then
 	echo "remove old artifact dir: ${progdir}/cbsd"
