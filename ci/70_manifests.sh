@@ -18,35 +18,35 @@ if [ ! -r ${SRC_ROOT}/Makefile ]; then
 	exit 1
 fi
 
-cd ${progdir}
-if [ -d ${progdir}/myb ]; then
-	echo "remove old artifact dir: ${progdir}/myb"
-	rm -rf ${progdir}/myb
-fi
+#cd ${progdir}
+#if [ -d ${progdir}/myb ]; then
+#	echo "remove old artifact dir: ${progdir}/myb"
+#	rm -rf ${progdir}/myb
+#fi
 
-mkdir ${progdir}/myb
+#mkdir ${progdir}/myb
 
-[ -r cbsd.tar ] && rm -f cbsd.tar
+#[ -r cbsd.tar ] && rm -f cbsd.tar
 # todo: prune build-deps (e.g: go)
 #rm -f cbsd/go-*.txz
 
-rsync -avz ${progdir}/myb-extras/ ${progdir}/myb/
-rsync -avz ${progdir}/jail-skel/ ${workdir}/jails-data/${jname}/
+#rsync -avz ${progdir}/myb-extras/ ${progdir}/myb/
+#rsync -avz ${progdir}/jail-skel/ ${workdir}/jails-data/${jname}/
 
 # in kubernetes bootsrap!
 #cp -a /usr/jails/export/micro1.img ${progdir}/myb/
 
-[ -d ${progdir}/myb/jail-skel ] && rm -rf ${progdir}/myb/jail-skel
-cp -a ${progdir}/jail-skel ${progdir}/myb/
+#[ -d ${progdir}/myb/jail-skel ] && rm -rf ${progdir}/myb/jail-skel
+#cp -a ${progdir}/jail-skel ${progdir}/myb/
 
 # Create myb.txz from ${progdir}/myb/
 # and copy to /cbsd/
+#
+#rm -rf /usr/ports/packages/All
 
-rm -rf /usr/ports/packages/All
-
-make -C /root/myb-build/ports/myb clean
-make -C /root/myb-build/ports/myb package
-cp -a /usr/ports/packages/All/myb-*.pkg ${progdir}/cbsd/
+#make -C /root/myb-build/ports/myb clean
+#make -C /root/myb-build/ports/myb package
+#cp -a /usr/ports/packages/All/myb-*.pkg ${progdir}/cbsd/
 
 #tar cf cbsd.tar cbsd
 #xz -T8 cbsd.tar

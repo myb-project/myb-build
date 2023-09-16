@@ -7,6 +7,31 @@ progdir=$( dirname ${progdir} )
 
 dstdir=$( mktemp -d )
 
+cd /usr/ports
+git reset --hard || true
+cbsd portsup
+
+## "OVERLAY"
+if [ -d ${progdir}/ports/cbsd ]; then
+	[ -d /usr/ports/sysutils/cbsd ] && rm -rf /usr/ports/sysutils/cbsd
+	cp -a ${progdir}/ports/cbsd /usr/ports/sysutils/
+fi
+
+if [ -d ${progdir}/ports/cbsd-mq-api ]; then
+	[ -d /usr/ports/sysutils/cbsd-mq-api ] && rm -rf /usr/ports/sysutils/cbsd-mq-api
+	cp -a ${progdir}/ports/cbsd-mq-api /usr/ports/sysutils/
+fi
+
+if [ -d ${progdir}/ports/garm ]; then
+	[ -d /usr/ports/sysutils/garm ] && rm -rf /usr/ports/sysutils/garm
+	cp -a ${progdir}/ports/garm /usr/ports/sysutils/
+fi
+
+if [ -d ${progdir}/ports/myb ]; then
+	[ -d /usr/ports/sysutils/myb ] && rm -rf /usr/ports/sysutils/myb
+	cp -a ${progdir}/ports/myb /usr/ports/sysutils/
+fi
+
 cpr_jname="cpr9ca75"
 
 # cleanup old pkg ?
@@ -59,6 +84,12 @@ gmake \
 
 
 cbsd cpr makeconf=/root/myb-build/myb_make.conf ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
+ret=$?
+
+if [ ${ret} -ne 0 ]; then
+	echo "CPR failed: ${ret}"
+	exit ${ret}
+fi
 
 cbsd jstart jname=${cpr_jname} || true
 
