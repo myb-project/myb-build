@@ -302,7 +302,12 @@ export workdir=/usr/jails
  osrelease_enable="NO" \
  mybosrelease_enable="YES" \
  moused_nondefault_enable="NO" \
- cbsd_workdir="/usr/jails"
+ cbsd_workdir="/usr/jails" \
+ utx_enable="NO" \
+ mixer_enable="NO" \
+ rc_startmsgs="NO" \
+ linux_mounts_enable="NO" \
+ rctl_enable="NO"
 
 if [ "${myb_manage_nginx}" != "NO" ]; then
 	/usr/sbin/sysrc nginx_enable="YES"

@@ -1,5 +1,5 @@
 PORTNAME=	cbsd
-DISTVERSION=	13.2.3a
+DISTVERSION=	14.0.0a
 CATEGORIES=	sysutils
 
 MAINTAINER=	olevole@olevole.ru
@@ -18,7 +18,7 @@ RUN_DEPENDS=	${LOCALBASE}/share/certs/ca-root-nss.crt:security/ca_root_nss \
 
 USES=		compiler:c++11-lang libedit pkgconfig:both
 USE_GITHUB=	yes
-GH_TAGNAME=	3bbf152
+GH_TAGNAME=	3701fdd
 USE_RC_SUBR=	cbsdd cbsdrsyncd cbsd-statsd-bhyve cbsd-statsd-hoster \
 		cbsd-statsd-jail
 MAKE_JOBS_UNSAFE=	yes

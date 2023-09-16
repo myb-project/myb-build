@@ -30,6 +30,12 @@ RSYNC_CMD=$( which rsync )
 
 #${RSYNC_CMD} -avz /root/clonos-ports/ /usr/ports/
 
+if [ -d /usr/ports ]; then
+	cd /usr/ports
+	git reset --hard > /dev/null 2>&1 || true
+fi
+
+cbsd portsup
 
 cbsd jremove jname='cpr*'
 rm -rf /var/cache/packages/*
@@ -39,8 +45,10 @@ cp -a /root/myb-build/ports/cbsd-mq-api /usr/ports/sysutils/
 cp -a /root/myb-build/ports/garm /usr/ports/sysutils/
 
 # devel CBSD
-[ -d /usr/ports/sysutils/cbsd ] && rm -rf /usr/ports/sysutils/cbsd
-cp -a /root/myb-build/ports/cbsd /usr/ports/sysutils/
+if [ -d /root/myb-build/ports/cbsd ]; then
+	[ -d /usr/ports/sysutils/cbsd ] && rm -rf /usr/ports/sysutils/cbsd
+	cp -a /root/myb-build/ports/cbsd /usr/ports/sysutils/
+fi
 
 # refresh modules
 [ -d /root/myb-build/myb-extras/myb.d ] && rm -rf /root/myb-build/myb-extras/myb.d

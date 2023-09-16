@@ -10,7 +10,7 @@ fi
 
 ECHO="echo -e"
 
-check="jail alma9 centos7 centos8 centos9 debian10 debian11 debian12 dflybsd6 euro9 fedora37 fedora38 freebsd13_ufs freebsd13_zfs freebsd14_ufs freebsd14_zfs freefire14_ufs freepbx ghostbsd22 homeass kali2022 k8s netbsd9 openbsd7 opnsense22 oracle7 oracle8 oracle9 rocky8 rocky9 ubuntu22 ubuntu22_vdi xigmanas"
+check="jail alma9 centos7 centos8 centos9 debian10 debian11 debian12 devuan5 dflybsd6 euro9 fedora37 fedora38 freebsd13_ufs freebsd13_zfs freebsd14_ufs freebsd14_zfs freefire14_ufs freepbx ghostbsd22 homeass kali2022 k8s netbsd9 openbsd7 opnsense22 oracle7 oracle8 oracle9 rocky8 rocky9 ubuntu22 ubuntu22_vdi xigmanas"
 
 if [ -z "${ver}" -o "${ver}" = "native" ]; then
 	tmpver=$( uname -r )
@@ -34,6 +34,7 @@ ubuntu22_vdi_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Ubuntu-vdi-x86-22.04.raw"
 debian10_iso="/usr/jails/src/iso/cbsd-cloud-cloud-Debian-x86-10.9.1.raw"
 debian11_iso="/usr/jails/src/iso/cbsd-cloud-Debian-x86-11.7.0.raw"
 debian12_iso="/usr/jails/src/iso/cbsd-cloud-Debian-x86-12.0.0.raw"
+devian5_iso="/usr/jails/src/iso/cbsd-cloud-Devuan-x86-5.0.raw"
 dflybsd6_iso="/usr/jails/src/iso/cbsd-cloud-DragonflyBSD-hammer-x64-6.4.0.raw"
 fedora37_iso="/usr/jails/src/iso/cbsd-cloud-Fedora-37-x86_64-cloud.raw"
 fedora38_iso="/usr/jails/src/iso/cbsd-cloud-Fedora-38-x86_64-cloud.raw"
