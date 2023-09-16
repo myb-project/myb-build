@@ -1,6 +1,5 @@
 #!/bin/sh
 set +e
-
 . /etc/rc.conf          # mybbasever
 
 pgm="${0##*/}"				# Program basename
@@ -9,10 +8,7 @@ progdir=$( realpath ${progdir} )
 progdir=$( dirname ${progdir} )
 
 export OSNAME="MyBee"
-cbsd world ver=${mybbasever}
-cbsd kernel ver=${mybbasever}
-
+cbsd packages ver=${mybbasever} destdir="${progdir}/cbsd"
 set -e
-#[ -d ${workdir}/basejail/base_amd64_amd64_${mybbasever}/rescue ] && rm -rf ${workdir}/basejail/base_amd64_amd64_${mybbasever}/rescue
 
 exit 0

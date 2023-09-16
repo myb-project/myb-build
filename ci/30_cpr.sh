@@ -7,10 +7,21 @@ progdir=$( dirname ${progdir} )
 
 dstdir=$( mktemp -d )
 
-# cleanup old pkg ?
-#/var/cache/packages/pkgdir-cpr9ca75 (host) -> /tmp/packages (jail)
+cpr_jname="cpr9ca75"
 
-echo "cbsd cpr ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${dstdir}"
+# cleanup old pkg ?
+#/var/cache/packages/pkgdir-${cpr_jname} (host) -> /tmp/packages (jail)
+
+ver=${mybbasever%%.*}
+
+if [ ! -h ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest ]; then
+	echo "no such ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest symlink to repo"
+	exit 1
+fi
+
+cbsd jstatus jname=${cpr_jname} || cbsd jremove jname=${cpr_jname}
+
+echo "cbsd cpr ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/"
 
 PREFETCHED_PACKAGES="\
 nginx \
@@ -49,21 +60,22 @@ gmake \
 
 cbsd cpr makeconf=/root/myb-build/myb_make.conf ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
 
-cbsd jstart jname=cpr9ca75 || true
+cbsd jstart jname=${cpr_jname} || true
 
-cp -a ${progdir}/scripts/cix_upgrade /usr/jails/jails-data/cpr9ca75-data/root/
-cbsd jexec jname=cpr9ca75 /root/cix_upgrade
+cp -a ${progdir}/scripts/cix_upgrade /usr/jails/jails-data/${cpr_jname}-data/root/
+cbsd jexec jname=${cpr_jname} /root/cix_upgrade
 
 # original?
-cp -a /usr/jails/jails-data/cpr9ca75-data/tmp/myb_ver.conf ${progdir}/cbsd/
-cp -a /usr/jails/jails-data/cpr9ca75-data/tmp/myb_ver.json ${progdir}/cbsd/
+cp -a /usr/jails/jails-data/${cpr_jname}-data/tmp/myb_ver.conf ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
+cp -a /usr/jails/jails-data/${cpr_jname}-data/tmp/myb_ver.json ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
 
-cbsd jstop jname=cpr9ca75 || true
+cbsd jstop jname=${cpr_jname} || true
 
-mv ${dstdir}/* ${progdir}/cbsd/
+mv ${dstdir}/* ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
 
 rm -rf ${dstdir}
-
 [ ! -h ${progdir}/cbsd/pkg.pkg ] && exit 1
+
+cbsd jremove jname=${cpr_jname} > /dev/null 2>&1
 
 exit 0
