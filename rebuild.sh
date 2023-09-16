@@ -77,10 +77,10 @@ rm -rf /root/myb-build/myb-extras/api.d/.git || true
 /root/myb-build/ci/00_srcup.sh
 /root/myb-build/ci/10_patch-src.sh
 /root/myb-build/ci/20_world.sh
+/root/myb-build/ci/25_base-pkg.sh
 /root/myb-build/ci/30_cpr.sh
-# need to chick-egg - we need myb.pkg:
-/root/myb-build/ci/95_updaterepo.sh
 /root/myb-build/ci/35_cpr-micro.sh
+/root/myb-build/ci/35_update_repo.sh
 
 #fi
 
