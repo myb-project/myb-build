@@ -257,7 +257,7 @@ while : ; do
 	echo -e "${H2_COLOR}1) (Re)Configure Host Network${NORMAL}     ${H2_COLOR}11) Configure Hosts Allow for API ${IP_WL_COLOR}(${IP_WL})${NORMAL}"
 	echo -e "${H2_COLOR}2) Reset 'root' user password${NORMAL}     ${H2_COLOR}12) Configure Pubkey WhiteList ${PUB_WL_COLOR}(${PUB_WL})${NORMAL}"
 	echo -e "${VPN_COLOR}3) Configure VPN access for API${NORMAL}   ${DGRAY}13) Add cluster node${NORMAL}"
-	echo -e "${H2_COLOR}4) Change VM network profile (${myb_net_cur_profile})${NORMAL}  ${H2_COLOR}14) Console Keyboard Map${NORMAL}"
+	echo -e "${H2_COLOR}4) Change VM network profile (${myb_net_cur_profile})${NORMAL}  ${DGRAY}14) not implemented yet${NORMAL}"
 	echo -e "${TEMPLATE_COLOR}5) Install container template${NORMAL}     ${DGRAY}15) NFS/PVC/P9FS shares for VM${NORMAL}"
 	echo -e "${H2_COLOR}6) Shell ( warm cloud image )${NORMAL}     ${H2_COLOR}16) Set API FQDN ( + certbot ) ${API_FQDN_COLOR}(${API_FQDN})${NORMAL}"
 	echo -e "${H2_COLOR}7) Reboot Server${NORMAL}                  ${H2_COLOR}17) Kubernetes clusters setting${NORMAL}"
@@ -378,22 +378,31 @@ while : ; do
 			/usr/sbin/kbdmap
 			;;
 		16)
-			_editfile=1		# always edit file
-			case ${API_FQDN} in
-				disabled)
-					if getyesno "Turn API FQDN/certbot ON? ('n' or '0' - leave as disabled) "; then
-						cbsd myb_api_fqdn
-					fi
-					;;
-				*)
-					if getyesno "Turn API FQDN/certbot OFF? ('n' or '0' - leave as enabled) "; then
-						API_FQDN="disabled"
-						${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf API_FQDN="${API_FQDN}" > /dev/null 2>&1
-						_editfile=0
-						cbsd myb_api_fqdn mode=off
-					fi
-					;;
-			esac
+			if [ ! -x /usr/local/bin/certbot ]; then
+				if getyesno "The system does not have the 'certbot' package. It seems you are running it for the first time. Can I install the necessary software to continue?"; then
+					env ASSUME_ALWAYS_YES=yes SIGNATURE_TYPE=none IGNORE_OSVERSION=yes /usr/sbin/pkg install -r MyBee-latest -y py39-certbot
+				fi
+			fi
+			if [ ! -x /usr/local/bin/certbot ]; then
+				${ECHO} "${N1_COLOR}error: no such /usr/local/bin/certbot, please install first: py39-certbot"
+			else
+				_editfile=1		# always edit file
+				case ${API_FQDN} in
+					disabled)
+						if getyesno "Turn API FQDN/certbot ON? ('n' or '0' - leave as disabled) "; then
+							cbsd myb_api_fqdn
+						fi
+						;;
+					*)
+						if getyesno "Turn API FQDN/certbot OFF? ('n' or '0' - leave as enabled) "; then
+							API_FQDN="disabled"
+							${LOCKF_CMD} -s -t10 /tmp/sysrc_rc.conf.lock ${SYSRC_CMD} -qf /etc/rc.conf API_FQDN="${API_FQDN}" > /dev/null 2>&1
+							_editfile=0
+							cbsd myb_api_fqdn mode=off
+						fi
+						;;
+				esac
+			fi
 			;;
 		17)
 			/usr/local/bin/cbsd myb_k8s_settings

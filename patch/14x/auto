@@ -358,7 +358,7 @@ if [ -n "$FETCH_DISTRIBUTIONS" ]; then
 
 	[ $FETCH_RESULT -ne 0 ] && error "Could not fetch remote distributions"
 fi
-bsdinstall checksum || error "Distribution checksum failed"
+#bsdinstall checksum || error "Distribution checksum failed"
 bsdinstall distextract || error "Distribution extract failed"
 
 # Set up boot loader

@@ -24,7 +24,13 @@ set path = ($HOME/bin /sbin /bin /usr/sbin /usr/bin /usr/local/sbin /usr/local/b
 setenv	EDITOR	vi
 setenv	PAGER	less
 
-setenv LANG en_US.UTF-8
+setenv	LANG en_US.UTF-8
+setenv	LC_CTYPE C.UTF-8
+setenv	LC_COLLATE C.UTF-8
+setenv	LC_TIME C.UTF-8
+setenv	LC_NUMERIC C.UTF-8
+setenv	LC_MONETARY C.UTF-8
+setenv	LC_MESSAGES C.UTF-8
 
 if ($?prompt) then
 	# An interactive shell -- set some stuff up

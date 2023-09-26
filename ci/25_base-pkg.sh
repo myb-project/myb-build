@@ -1,5 +1,4 @@
 #!/bin/sh
-set +e
 . /etc/rc.conf          # mybbasever
 
 pgm="${0##*/}"				# Program basename
@@ -9,6 +8,6 @@ progdir=$( dirname ${progdir} )
 
 export OSNAME="MyBee"
 cbsd packages ver=${mybbasever} destdir="${progdir}/cbsd"
-set -e
+ret=$?
+exit ${ret}
 
-exit 0

@@ -7,7 +7,6 @@ export PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
 export OSNAME="MyBee"
 
 cd /
-
 #if [ 1 -gt 2 ]; then
 
 set -o errexit
@@ -37,8 +36,6 @@ fi
 
 cbsd portsup
 
-cbsd jremove jname='cpr*'
-rm -rf /var/cache/packages/*
 [ -d /usr/ports/sysutils/cbsd-mq-api ] && rm -rf /usr/ports/sysutils/cbsd-mq-api
 [ -d /usr/ports/sysutils/garm ] && rm -rf /usr/ports/sysutils/garm
 cp -a /root/myb-build/ports/cbsd-mq-api /usr/ports/sysutils/
@@ -73,11 +70,14 @@ rm -rf /root/myb-build/myb-extras/api.d/.git || true
 
 # !!!
 # not for half:
-/root/myb-build/ci/00_cleanup.sh
-/root/myb-build/ci/00_srcup.sh
-/root/myb-build/ci/10_patch-src.sh
-/root/myb-build/ci/20_world.sh
-/root/myb-build/ci/25_base-pkg.sh
+set -o errexit
+
+#/root/myb-build/ci/00_cleanup.sh
+/root/myb-build/ci/00_half-cleanup.sh
+#/root/myb-build/ci/00_srcup.sh
+#/root/myb-build/ci/10_patch-src.sh
+#/root/myb-build/ci/20_world.sh
+#/root/myb-build/ci/25_base-pkg.sh
 /root/myb-build/ci/30_cpr.sh
 /root/myb-build/ci/35_cpr-micro.sh
 /root/myb-build/ci/35_update_repo.sh
@@ -85,26 +85,16 @@ rm -rf /root/myb-build/myb-extras/api.d/.git || true
 #fi
 
 # half build
-/root/myb-build/ci/40_jail.sh
-/root/myb-build/ci/44_export-micro.sh
-/root/myb-build/ci/50_purgejail.sh
-/root/myb-build/ci/55_purge_distribution.sh
-/root/myb-build/ci/60_distribution.sh
-/root/myb-build/ci/70_manifests.sh
+#/root/myb-build/ci/40_jail.sh
+#/root/myb-build/ci/44_export-micro.sh
+#/root/myb-build/ci/50_purgejail.sh
+#/root/myb-build/ci/55_purge_distribution.sh
+#/root/myb-build/ci/60_distribution-base.sh
+#/root/myb-build/ci/60_distribution-pkg.sh
+#/root/myb-build/ci/70_manifests.sh
 /root/myb-build/ci/90_conv.sh
-/root/myb-build/ci/95_updaterepo.sh
+#/root/myb-build/ci/95_updaterepo.sh
 
-chmod 0644 /tmp/mybee1-14.0_amd64.img
-chmod 0644 /usr/jails/jails-data/mybee1-data/usr/freebsd-dist/*
+set +o errexit
 
-echo
-echo "scp /tmp/mybee1-14.0_amd64.img oleg@172.16.0.3:mybee1-14.0_amd64.img"
-echo
-echo "cd /usr/jails/jails-data/mybee1-data/usr/freebsd-dist"
-echo "sftp -oPort=222 oleg@www.bsdstore.ru   -> /usr/local/www/myb.convectix.com/"
-echo "or"
-echo "scp -oPort=222 /usr/jails/jails-data/mybee1-data/usr/freebsd-dist/MANIFEST oleg@www.bsdstore.ru:/usr/local/www/myb.convectix.com/"
-echo "scp -oPort=222 /usr/jails/jails-data/mybee1-data/usr/freebsd-dist/base.txz oleg@www.bsdstore.ru:/usr/local/www/myb.convectix.com/"
-echo "scp -oPort=222 /usr/jails/jails-data/mybee1-data/usr/freebsd-dist/cbsd.txz oleg@www.bsdstore.ru:/usr/local/www/myb.convectix.com/"
-echo "scp -oPort=222 /usr/jails/jails-data/mybee1-data/usr/freebsd-dist/kernel.txz oleg@www.bsdstore.ru:/usr/local/www/myb.convectix.com/"
-echo
+exit 0

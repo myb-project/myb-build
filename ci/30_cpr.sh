@@ -32,6 +32,11 @@ if [ -d ${progdir}/ports/myb ]; then
 	cp -a ${progdir}/ports/myb /usr/ports/sysutils/
 fi
 
+[ -d /tmp/send-fio ] && rm -rf /tmp/send-fio
+git clone https://github.com/mergar/send-fio.git /tmp/send-fio
+cp -a /tmp/send-fio/ports/spacevm-sendfio /usr/ports/sysutils/
+rm -rf /tmp/send-fio
+
 cpr_jname="cpr9ca75"
 
 # cleanup old pkg ?
@@ -97,15 +102,18 @@ cp -a ${progdir}/scripts/cix_upgrade /usr/jails/jails-data/${cpr_jname}-data/roo
 cbsd jexec jname=${cpr_jname} /root/cix_upgrade
 
 # original?
-cp -a /usr/jails/jails-data/${cpr_jname}-data/tmp/myb_ver.conf ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
-cp -a /usr/jails/jails-data/${cpr_jname}-data/tmp/myb_ver.json ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
+#cp -a /usr/jails/jails-data/${cpr_jname}-data/tmp/myb_ver.conf ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
+#cp -a /usr/jails/jails-data/${cpr_jname}-data/tmp/myb_ver.json ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
 
 cbsd jstop jname=${cpr_jname} || true
 
 mv ${dstdir}/* ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/
 
 rm -rf ${dstdir}
-[ ! -h ${progdir}/cbsd/pkg.pkg ] && exit 1
+if [ ! -h ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/pkg.pkg ]; then
+	echo "no such ${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/pkg.pkg"
+	exit 1
+fi
 
 cbsd jremove jname=${cpr_jname} > /dev/null 2>&1
 

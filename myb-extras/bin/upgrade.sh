@@ -20,7 +20,7 @@ while getopts "c:w:" opt; do
 	shift $(($OPTIND - 1))
 done
 
-export PATH=/usr/local/bin:/usr/local/sbin:$PATH
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 clear
 
 cur_time=$( ${DATE_CMD} +%s )
