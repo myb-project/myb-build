@@ -650,6 +650,9 @@ fi
 # legacy firstboot instasll
 [ -r /usr/local/etc/rc.d/mybinst.sh ] && rm -f /usr/local/etc/rc.d/mybinst.sh
 
+# sh: /usr/libexec/hyperv/hyperv_vfattach - disable devd-based autoload for hyperv
+[ -r /etc/devd/hyperv.conf ] && rm -f /etc/devd/hyperv.conf
+
 if [ ${myb_firstboot} -eq 1 ]; then
 /usr/bin/wall <<EOF
   MyBee cluster setup complete, reboot host!

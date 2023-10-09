@@ -269,5 +269,79 @@ sysrc -qf ${workdir}/jails-data/${jname}-data/etc/rc.conf \
 	sendmail_msp_queue_enable="NO" \
 	syslogd_flags="-ss" \
 	moused_nondefault_enable="NO"
+	kldxref_enable="NO"
+	utx_enable="NO"
+	cleanvar_enable="NO"
+	gptboot_enable="NO"
+	netif_enable="NO"
+	resolv_enable="NO"
+	cron_enable="NO"       # Run the periodic job daemon.
+	savecore_enable="NO"
+	crashinfo_enable="NO"
+	linux_mounts_enable="NO"
+	virecover_enable="NO"
+	newsyslog_enable="NO"
+	mixer_enable="NO"
+	rctl_enable="NO"
+	rc_startmsgs="NO"
+	sendmail_cert_create="NO"
+	check_quotas="NO"
+	update_motd="NO"       # update version info in /var/run/motd (or NO)
+	syslogd_oomprotect="NO"
+
+truncate -s0 /usr/jails/jails-data/${jname}-data/var/run/motd
+
+rm -f /usr/jails/jails-data/${jname}-data/etc/devd/hyperv.conf
+
+cat > /usr/jails/jails-data/${jname}-data/etc/sysctl.conf <<EOF
+security.bsd.see_other_uids = 0
+kern.init_shutdown_timeout = 900
+security.bsd.see_other_gids = 0
+net.inet.icmp.icmplim = 0
+net.inet.tcp.fast_finwait2_recycle = 1
+net.inet.tcp.recvspace = 262144
+net.inet.tcp.sendspace = 262144
+kern.ipc.shm_use_phys = 1
+kern.ipc.shmall = 262144
+kern.ipc.shmmax = 1073741824
+kern.maxfiles = 2048000
+kern.maxfilesperproc = 200000
+net.inet.ip.intr_queue_maxlen = 2048
+net.inet.ip.portrange.first = 1024
+net.inet.ip.portrange.last = 65535
+net.inet.ip.portrange.randomized = 0
+net.inet.tcp.msl = 10000
+net.inet.tcp.nolocaltimewait = 1
+net.inet.tcp.syncookies = 1
+net.inet.udp.maxdgram = 18432
+net.local.stream.recvspace = 262144
+net.local.stream.sendspace = 262144
+vfs.zfs.prefetch.disable = 1
+kern.corefile = /var/coredumps/%N.core
+kern.sugid_coredump = 1
+kern.ipc.shm_allow_removed = 1
+kern.shutdown.poweroff_delay = 500
+kern.vt.enable_bell = 0
+dev.netmap.buf_size = 24576
+net.inet.ip.forwarding = 1
+net.inet6.ip6.forwarding = 1
+net.inet6.ip6.rfc6204w3 = 1
+vfs.nfsd.enable_stringtouid = 1
+vfs.nfs.enable_uidtostring = 1
+vfs.zfs.min_auto_ashift = 12
+security.bsd.see_jail_proc = 0
+security.bsd.unprivileged_read_msgbuf = 0
+net.bpf.zerocopy_enable = 1
+net.inet.raw.maxdgram = 16384
+net.inet.raw.recvspace = 16384
+net.route.netisr_maxqlen = 2048
+net.bpf.optimize_writers = 1
+net.inet.ip.redirect = 0
+net.inet6.ip6.redirect = 0
+hw.intr_storm_threshold = 9000
+hw.pci.do_power_nodriver = 3
+net.inet.icmp.reply_from_interface = 1
+kern.ipc.maxsockbuf = 16777216
+EOF
 
 # cron disable

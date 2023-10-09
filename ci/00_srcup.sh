@@ -3,7 +3,7 @@
 set +e
 
 echo "Build MyBee base version: ${mybbasever}"
-cbsd srcup ver=${mybbasever} rev=5f74163bdef
+cbsd srcup ver=${mybbasever} rev=243550d32f4
 
 src_dir_makefile="/usr/jails/src/src_${mybbasever}/src/Makefile"
 
