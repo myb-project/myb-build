@@ -51,7 +51,7 @@ fi
 
 cbsd jstatus jname=${cpr_jname} || cbsd jremove jname=${cpr_jname}
 
-echo "cbsd cpr ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/"
+echo "cbsd cpr batch=0 ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${progdir}/cbsd/FreeBSD:${ver}:amd64/latest/"
 
 PREFETCHED_PACKAGES="\
 nginx \
@@ -88,7 +88,7 @@ gmake \
 #/usr/ports/net/realtek-re-kmod
 
 
-cbsd cpr makeconf=/root/myb-build/myb_make.conf ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
+cbsd cpr batch=0 makeconf=/root/myb-build/myb_make.conf ver=${mybbasever} pkglist=/root/myb-build/myb.list dstdir=${dstdir} package_fetch="${PREFETCHED_PACKAGES}" autoremove=1
 ret=$?
 
 if [ ${ret} -ne 0 ]; then
